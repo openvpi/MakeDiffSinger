@@ -59,7 +59,7 @@ A universal monosyllabic phoneme system has "C(m)-V-C(n)" (m,n >= 0) phoneme pat
 3. Run:
 
    ```bash
-   python add_ph_num.py path/to/your/transcriptions.csv --vowels vowel.txt --consonants consonants.txt
+   python add_ph_num.py path/to/your/transcriptions.csv --vowels vowels.txt --consonants consonants.txt
    ```
 
 ### 3.3 polysyllabic phoneme systems (English, Russian, etc.)
