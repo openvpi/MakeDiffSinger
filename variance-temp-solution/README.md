@@ -87,7 +87,7 @@ Run:
 python estimate_midi.py path/to/your/transcriptions.csv path/to/your/wavs
 ```
 
-After finishing this step, the transcriptions.csv file can be directly used to train the phoneme duration predictor (it only need rough MIDI sequence). If you want to train a pitch predictor, you must finish the remaining steps as follows, otherwise the predictions will not be accurate.
+After finishing this step, the transcriptions.csv file can be directly used to train the phoneme duration predictor (it only needs rough MIDI sequences). If you want to train a pitch predictor, you must finish the remaining steps as follows, otherwise the predictions will not be accurate.
 
 ## 5. Refine MIDI sequences
 
