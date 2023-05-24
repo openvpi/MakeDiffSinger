@@ -120,7 +120,7 @@ def cli():
 def csv2ds(transcription_file, ds_folder, overwrite, tolerance, hop_size, sample_rate):
     """Convert a transcription file to DS file"""
     wavs_folder = transcription_file.parent / "wavs"
-    assert wavs_folder.is_dir(), "raw folder not found."
+    assert wavs_folder.is_dir(), "wavs folder not found."
 
     ds_folder.mkdir(parents=True, exist_ok=True)
     with open(transcription_file, "r", encoding="utf-8") as f:
