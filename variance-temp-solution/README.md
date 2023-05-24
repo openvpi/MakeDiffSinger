@@ -7,7 +7,7 @@ This pipeline will guide you to migrate your old DiffSinger datasets to the new 
 ```bash
 git clone https://github.com/openvpi/MakeDiffSinger.git
 cd MakeDiffSinger/variance-temp-solution
-pip install click
+pip install -r requirements.txt  # or you can reuse a pre-existing DiffSinger environment
 ```
 
 ## 2. Convert transcriptions

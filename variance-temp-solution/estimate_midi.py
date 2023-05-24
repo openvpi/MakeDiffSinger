@@ -1,12 +1,11 @@
-import tqdm
-import math
-
-import numpy as np
 import csv
+import math
 import pathlib
 
 import click
 import librosa
+import numpy as np
+import tqdm
 
 from get_pitch import get_pitch_parselmouth
 

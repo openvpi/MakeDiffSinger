@@ -1,6 +1,5 @@
-import pathlib
-from collections import OrderedDict
 import csv
+import pathlib
 
 import click
 
