@@ -87,3 +87,32 @@ Run:
 python estimate_midi.py path/to/your/transcriptions.csv path/to/your/wavs
 ```
 
+After finishing this step, the transcriptions.csv file can be directly used to train the phoneme duration predictor (it only need rough MIDI sequence). If you want to train a pitch predictor, you must finish the remaining steps as follows, otherwise the predictions will not be accurate.
+
+## 5. Refine MIDI sequences
+
+### 5.1 take apart transcriptions.csv into DS files
+
+Run:
+
+```bash
+python convert_ds.py csv2ds path/to/your/transcriptions.csv path/to/your/wavs --overwrite
+```
+
+This will generate *.ds files matching your *.wav files in the same directory.
+
+### 5.2 manually edit MIDI sequences
+
+Get the newest release of SlurCutter from [here](https://github.com/SineStriker/qsynthesis-revenge). This simple tool helps you adjust MIDI pitch in each DS file and cut notes into slurs if neccessary. Be sure to backup your DS files before you start, since this tool will automatically save and overwrite an edited DS file.
+
+### 5.3 re-combine DS files into transcriptions.csv
+
+Run:
+
+```bash
+python convert_ds.py ds2csv path/to/your/xxx.ds path/to/your/transcriptions.csv
+```
+
+This will generate a new transcriptions.csv from the DS files you just edited.
+
+Now the transcriptions.csv can be used for all functionalities of DiffSinger training.

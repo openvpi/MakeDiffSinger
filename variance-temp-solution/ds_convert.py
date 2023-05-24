@@ -1,6 +1,5 @@
 import csv
 import json
-import logging
 import pathlib
 from decimal import Decimal
 from math import isclose
@@ -8,47 +7,10 @@ from math import isclose
 import click
 import librosa
 import numpy as np
-import parselmouth
 from tqdm import tqdm
 
-def norm_f0(f0):
-    f0 = np.log2(f0)
-    return f0
+from get_pitch import get_pitch_parselmouth
 
-def denorm_f0(f0, uv, pitch_padding=None):
-    f0 = 2**f0
-    if uv is not None:
-        f0[uv > 0] = 0
-    if pitch_padding is not None:
-        f0[pitch_padding] = 0
-    return f0
-
-def interp_f0(f0, uv=None):
-    if uv is None:
-        uv = f0 == 0
-    f0 = norm_f0(f0)
-    if sum(uv) == len(f0):
-        f0[uv] = -np.inf
-    elif sum(uv) > 0:
-        f0[uv] = np.interp(np.where(uv)[0], np.where(~uv)[0], f0[~uv])
-    return denorm_f0(f0, uv=None), uv
-
-def get_pitch_parselmouth(wav_data, hop_size, audio_sample_rate):
-    time_step = hop_size / audio_sample_rate
-    f0_min = 65
-    f0_max = 800
-
-    # noinspection PyArgumentList
-    f0 = (
-        parselmouth.Sound(wav_data, sampling_frequency=audio_sample_rate)
-        .to_pitch_ac(
-            time_step=time_step, voicing_threshold=0.6, pitch_floor=f0_min, pitch_ceiling=f0_max
-        )
-        .selected_array["frequency"]
-    )
-    uv = f0 == 0
-    f0, uv = interp_f0(f0, uv)
-    return time_step, f0, uv
 
 def try_resolve_note_slur_by_matching(ph_dur, ph_num, note_dur, tol):
     if len(ph_num) > len(note_dur):
@@ -77,6 +39,7 @@ def try_resolve_note_slur_by_matching(ph_dur, ph_num, note_dur, tol):
             slur = True
     return np.diff(new_note_dur, prepend=Decimal("0.0")).tolist(), note_slur
 
+
 def try_resolve_slur_by_slicing(ph_dur, ph_num, note_seq, note_dur, tol):
     ph_num_cum = np.cumsum([0] + ph_num)
     word_pos = np.cumsum([sum(ph_dur[l:r]) for l, r in zip(ph_num_cum[:-1], ph_num_cum[1:])])
@@ -89,15 +52,15 @@ def try_resolve_slur_by_slicing(ph_dur, ph_num, note_seq, note_dur, tol):
     while idx_word < len(word_pos):
         slur = False
         if note_pos[idx_note] > word_pos[idx_word] and not isclose(
-            note_pos[idx_note], word_pos[idx_word], abs_tol=tol
+                note_pos[idx_note], word_pos[idx_word], abs_tol=tol
         ):
             new_note_seq.append(note_seq[idx_note])
             new_note_dur.append(word_pos[idx_word])
             note_slur.append(1 if slur else 0)
         else:
             while idx_note < len(note_pos) and (
-                note_pos[idx_note] < word_pos[idx_word]
-                or isclose(note_pos[idx_note], word_pos[idx_word], abs_tol=tol)
+                    note_pos[idx_note] < word_pos[idx_word]
+                    or isclose(note_pos[idx_note], word_pos[idx_word], abs_tol=tol)
             ):
                 new_note_seq.append(note_seq[idx_note])
                 new_note_dur.append(note_pos[idx_note])
@@ -114,9 +77,11 @@ def try_resolve_slur_by_slicing(ph_dur, ph_num, note_seq, note_dur, tol):
         idx_word += 1
     return new_note_seq, np.diff(new_note_dur, prepend=Decimal("0.0")).tolist(), note_slur
 
+
 @click.group()
 def cli():
     pass
+
 
 @click.command(help="Convert a transcription file to DS files")
 @click.argument(
@@ -202,13 +167,14 @@ def csv2ds(transcription_file, ds_folder, overwrite, tolerance, hop_size, sample
                     "note_dur": " ".join(map(str, note_dur)),
                     "note_slur": " ".join(map(str, note_slur)),
                     "f0_seq": " ".join(map("{:.1f}".format, f0)),
-                    "f0_timestep": f0_timestep,
+                    "f0_timestep": str(f0_timestep),
                 }
             ]
 
             if not ds_fn.exists() or overwrite:
                 with open(ds_fn, "w", encoding="utf-8") as f:
                     json.dump(ds_content, f, ensure_ascii=False, indent=4)
+
 
 @click.command(help="Convert DS files to a transcription file")
 @click.argument(
@@ -265,6 +231,7 @@ def ds2csv(ds_folder, transcription_file, overwrite):
         )
         writer.writeheader()
         writer.writerows(transcriptions)
+
 
 cli.add_command(csv2ds)
 cli.add_command(ds2csv)
