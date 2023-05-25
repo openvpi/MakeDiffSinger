@@ -66,6 +66,9 @@ A universal monosyllabic phoneme system has "C(m)-V-C(n)" (m,n >= 0) phoneme pat
 
 We recommand this step be manually performed because word divisions cannot be infered from phoneme sequences in these phoneme systems.
 
+> After finishing this step, the transcriptions.csv file can be directly used to train the phoneme duration predictor (it only needs rough MIDI sequences extracted from wave files). If you want to train a pitch predictor, you must finish the remaining steps as follows, otherwise the predictions will not be accurate.
+>
+
 ## 4. Estimate note values
 
 The note tier is another division of words besides the phoneme tier. See the example below:
@@ -87,8 +90,6 @@ Run:
 python estimate_midi.py path/to/your/transcriptions.csv path/to/your/wavs
 ```
 
-After finishing this step, the transcriptions.csv file can be directly used to train the phoneme duration predictor (it only needs rough MIDI sequences). If you want to train a pitch predictor, you must finish the remaining steps as follows, otherwise the predictions will not be accurate.
-
 ## 5. Refine MIDI sequences
 
 ### 5.1 take apart transcriptions.csv into DS files
@@ -103,7 +104,7 @@ This will generate *.ds files matching your *.wav files in the same directory.
 
 ### 5.2 manually edit MIDI sequences
 
-Get the newest release of SlurCutter from [here](https://github.com/SineStriker/qsynthesis-revenge). This simple tool helps you adjust MIDI pitch in each DS file and cut notes into slurs if neccessary. Be sure to backup your DS files before you start, since this tool will automatically save and overwrite an edited DS file.
+Get the latest release of SlurCutter from [here](https://github.com/SineStriker/qsynthesis-revenge). This simple tool helps you adjust MIDI pitch in each DS file and cut notes into slurs if neccessary. Be sure to backup your DS files before you start, since this tool will automatically save and overwrite an edited DS file.
 
 ### 5.3 re-combine DS files into transcriptions.csv
 
