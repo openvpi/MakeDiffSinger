@@ -104,7 +104,7 @@ This will generate *.ds files matching your *.wav files in the same directory.
 
 ### 5.2 manually edit MIDI sequences
 
-Get the latest release of SlurCutter from [here](https://github.com/SineStriker/qsynthesis-revenge). This simple tool helps you adjust MIDI pitch in each DS file and cut notes into slurs if neccessary. Be sure to backup your DS files before you start, since this tool will automatically save and overwrite an edited DS file.
+Get the latest release of SlurCutter from [here](https://github.com/openvpi/MakeDiffSinger/releases/tag/v0.0.1-slurcutter-v0.0.1.2). This simple tool helps you adjust MIDI pitch in each DS file and cut notes into slurs if neccessary. Be sure to backup your DS files before you start, since this tool will automatically save and overwrite an edited DS file.
 
 ### 5.3 re-combine DS files into transcriptions.csv
 
