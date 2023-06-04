@@ -117,3 +117,29 @@ python convert_ds.py ds2csv path/to/your/xxx.ds path/to/your/transcriptions.csv
 This will generate a new transcriptions.csv from the DS files you just edited.
 
 Now the transcriptions.csv can be used for all functionalities of DiffSinger training.
+
+## (Appendix) other useful tools
+
+### correct_cents.py
+
+Apply cents correction to note sequences in a transcriptions.csv to offset the out-of-tune errors. Need pitch extracted from waveforms for reference.
+
+Usage:
+
+```bash
+python correct_cents.py path/to/your/transcriptions.csv path/to/your/wavs
+```
+
+Note: this operation will overwrite your input CSV file.
+
+### eliminate_short.py
+
+Eliminate short slur notes in DS files. Slurs that are shorter than a given threshold will be merged into its neighboring notes within the same word.
+
+Usage:
+
+```bash
+python eliminate_short.py path/to/your/ds/files
+```
+
+Note: this operation will overwrite your input DS files.
