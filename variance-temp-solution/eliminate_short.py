@@ -67,6 +67,7 @@ def eliminate_short(
                     word_note_seq_new.append(
                         (word_note_seq[j][0], prev_merge + word_note_seq[j][1] + post_merge, False)
                     )
+                    prev_merge = post_merge
                     j = k
 
                 word_note_div_new.append(word_note_seq_new)
