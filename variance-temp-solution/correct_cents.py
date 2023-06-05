@@ -141,7 +141,7 @@ def ds(
         if not ds_file.is_file():
             continue
 
-        assert ds_file.with_suffix('wav').exists(), \
+        assert ds_file.with_suffix('.wav').exists(), \
             f'Missing corresponding .wav file of {ds_file.name}.'
         with open(ds_file, 'r', encoding='utf8') as f:
             params = json.load(f)
