@@ -48,13 +48,13 @@ def correct_cents_item(
         end_idx = math.ceil(end / timestep)
         note_pitch = ref_pitch[start_idx: end_idx]
         note_pitch_close = note_pitch[(note_pitch >= midi - 0.5) & (note_pitch < midi + 0.5)]
-        if len(note_pitch_close) < len(note_pitch) * error_ratio:
+        if len(note_pitch_close) < len(note_pitch) * error_ratio or len(note_pitch) == 0:
             warns.append({
                 'position': name,
                 'note_index': i,
                 'note_value': note
             })
-            if len(note_pitch_close) == 0:
+            if len(note_pitch) == 0 or len(note_pitch_close) == 0:
                 start = end
                 note_seq_correct.append(note)
                 continue
