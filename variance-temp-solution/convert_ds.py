@@ -136,7 +136,8 @@ def csv2ds(transcription_file, ds_folder, overwrite, tolerance, hop_size, sample
             assert wav_fn.is_file(), f"{item_name}.wav not found."
             assert len(ph_dur) == sum(ph_num), "ph_dur and ph_num mismatch."
             assert len(note_seq) == len(note_dur), "note_seq and note_dur should have the same length."
-            assert isclose(sum(ph_dur), sum(note_dur), abs_tol=tolerance), "mismatch total duration."
+            assert isclose(sum(ph_dur), sum(note_dur), abs_tol=tolerance), \
+                f"[{item_name}] ERROR: mismatch total duration: {sum(ph_dur) - sum(note_dur)}"
 
             # Resolve note_slur
             if "note_slur" in trans_line and trans_line["note_slur"]:
