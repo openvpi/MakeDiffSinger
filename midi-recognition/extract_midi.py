@@ -8,13 +8,12 @@ import librosa
 
 @click.command(help='Extract MIDI sequences from OpenSVIP json files and add them into transcriptions.csv')
 @click.argument('json_dir', metavar='JSONS')
-@click.argument('tags_file', metavar='TAGS')
 @click.argument('csv_file', metavar='TRANSCRIPTIONS')
-def extract_midi(json_dir, tags_file, csv_file):
+def extract_midi(json_dir, csv_file):
     json_dir = pathlib.Path(json_dir).resolve()
     assert json_dir.exists(), 'The json directory does not exist.'
-    tags_file = pathlib.Path(tags_file).resolve()
-    assert tags_file.exists(), 'The path to tags.json does not exist.'
+    tags_file = json_dir / 'tags.json'
+    assert tags_file.exists(), 'The tags.json does not exist.'
     csv_file = pathlib.Path(csv_file).resolve()
     assert csv_file.resolve(), 'The path to transcriptions.csv does not exist.'
     tol = 0.001
