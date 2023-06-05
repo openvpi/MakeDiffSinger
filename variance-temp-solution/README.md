@@ -127,10 +127,16 @@ Apply cents correction to note sequences in a transcriptions.csv to offset the o
 Usage:
 
 ```bash
-python correct_cents.py path/to/your/transcriptions.csv path/to/your/wavs
+python correct_cents.py csv path/to/your/transcriptions.csv path/to/your/wavs
 ```
 
-Note: this operation will overwrite your input CSV file.
+or
+
+```bash
+python correct_cents.py ds path/to/your/ds/files
+```
+
+Note: this operation will overwrite your input file(s).
 
 ### eliminate_short.py
 
