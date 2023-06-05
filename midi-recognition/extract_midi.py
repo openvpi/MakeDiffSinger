@@ -88,7 +88,8 @@ def extract_midi(json_dir, csv_file):
                 split_note_seq.append(
                     ('rest', cur_clip_secs + split_tag['duration'] - cur_note_secs)
                 )
-            print(split_note_seq)
+            if split_tag['filename'] not in transcriptions:
+                continue
             dst_dict = transcriptions[split_tag['filename']]
             dst_dict['note_seq'] = ' '.join(n[0] for n in split_note_seq)
             dst_dict['note_dur'] = ' '.join(str(n[1]) for n in split_note_seq)
