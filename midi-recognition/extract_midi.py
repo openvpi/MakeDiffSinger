@@ -69,7 +69,7 @@ def extract_midi(json_dir, csv_file):
             split_note_seq = []
             while idx < len(note_seq):
                 cur_note_dur = note_seq[idx][1] - offset
-                if cur_note_secs + cur_note_dur + tol <= cur_clip_secs + split_tag['duration']:
+                if cur_note_secs + cur_note_dur <= cur_clip_secs + split_tag['duration']:
                     split_note_seq.append(
                         (note_seq[idx][0], cur_note_dur)
                     )
@@ -88,7 +88,8 @@ def extract_midi(json_dir, csv_file):
                 split_note_seq.append(
                     ('rest', cur_clip_secs + split_tag['duration'] - cur_note_secs)
                 )
-            print(split_note_seq)
+            if split_tag['filename'] not in transcriptions:
+                continue
             dst_dict = transcriptions[split_tag['filename']]
             dst_dict['note_seq'] = ' '.join(n[0] for n in split_note_seq)
             dst_dict['note_dur'] = ' '.join(str(n[1]) for n in split_note_seq)
