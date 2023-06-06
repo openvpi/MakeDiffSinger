@@ -64,7 +64,19 @@ A universal monosyllabic phoneme system has "C(m)-V-C(n)" (m,n >= 0) phoneme pat
 
 ### 3.3 polysyllabic phoneme systems (English, Russian, etc.)
 
-We recommand this step be manually performed because word divisions cannot be infered from phoneme sequences in these phoneme systems.
+We recommand this step be **manually performed** because word divisions cannot be infered from phoneme sequences in these phoneme systems. However, we offer an automated option, please use at your own choice:  
+
+If you used the [no midi pipeline](https://github.com/openvpi/DiffSinger/blob/main/pipelines/no_midi_preparation.ipynb) to build your transcriptions and you have TextGrid files from Montreal Alignment or labelling that has words and phonemes in them the this **may** work for you
+
+
+The no_midi_preperation notebook pipeline adds in random SP at start and end of the textgrid data, this is taken into account but I recommend a manual sanity check after running this
+   ```bash
+   python textgrid_add_ph_num.py path/to/your/transcriptions.csv --textgrid_dir path/to/your/textgrid_dir --split_phones_file /path/to/split_on_phones.txt
+   ```
+an example [split_phones_file is here](split_on_phones.txt)
+
+   
+___
 
 > After finishing this step, the transcriptions.csv file can be directly used to train the phoneme duration predictor (it only needs rough MIDI sequences extracted from wave files). If you want to train a pitch predictor, you must finish the remaining steps as follows, otherwise the predictions will not be accurate.
 >
