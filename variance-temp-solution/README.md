@@ -97,7 +97,7 @@ python estimate_midi.py path/to/your/transcriptions.csv path/to/your/wavs
 Run:
 
 ```bash
-python convert_ds.py csv2ds path/to/your/transcriptions.csv path/to/your/wavs --overwrite
+python convert_ds.py csv2ds path/to/your/transcriptions.csv path/to/your/wavs
 ```
 
 This will generate *.ds files matching your *.wav files in the same directory.
@@ -111,10 +111,10 @@ Get the latest release of SlurCutter from [here](https://github.com/openvpi/Make
 Run:
 
 ```bash
-python convert_ds.py ds2csv path/to/your/xxx.ds path/to/your/transcriptions.csv
+python convert_ds.py ds2csv path/to/your/ds path/to/your/transcriptions.csv
 ```
 
-This will generate a new transcriptions.csv from the DS files you just edited.
+This will generate a new transcriptions.csv from the DS files you just edited. Append `-f` if you are sure you want to overwrite the original transcription file (and the script complains about it).
 
 Now the transcriptions.csv can be used for all functionalities of DiffSinger training.
 
