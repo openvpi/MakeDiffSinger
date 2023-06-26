@@ -19,7 +19,7 @@ from get_pitch import get_pitch_parselmouth
 def estimate_midi(
         transcriptions: str,
         waveforms: str,
-        rest_uv_ratio: float = 0.95
+        rest_uv_ratio: float = 0.85
 ):
     transcriptions = pathlib.Path(transcriptions).resolve()
     waveforms = pathlib.Path(waveforms).resolve()
@@ -61,7 +61,7 @@ def estimate_midi(
             word_pitch = pitch[start_idx: end_idx]
             word_uv = uv[start_idx: end_idx]
             word_valid_pitch = np.extract(~word_uv & (word_pitch >= 0), word_pitch)
-            if len(word_valid_pitch) < rest_uv_ratio * (end_idx - start_idx):
+            if len(word_valid_pitch) < (1 - rest_uv_ratio) * (end_idx - start_idx):
                 note_seq.append('rest')
             else:
                 counts = np.bincount(np.round(word_valid_pitch).astype(np.int64))
