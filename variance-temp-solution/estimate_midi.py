@@ -62,7 +62,7 @@ def estimate_midi(
             else:
                 word_pitch = pitch[start_idx: end_idx]
                 word_uv = uv[start_idx: end_idx]
-                word_pitch = np.extract(~word_uv & word_pitch >= 0, word_pitch)
+                word_pitch = np.extract(~word_uv & (word_pitch >= 0), word_pitch)
                 counts = np.bincount(np.round(word_pitch).astype(np.int64))
                 midi = counts.argmax()
                 midi = np.mean(word_pitch[(word_pitch >= midi - 0.5) & (word_pitch < midi + 0.5)])
