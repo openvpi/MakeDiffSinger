@@ -6,6 +6,7 @@ import click
 import librosa
 import numpy as np
 import tqdm
+from typing import List
 
 from get_pitch import get_pitch_parselmouth
 
@@ -18,13 +19,13 @@ from get_pitch import get_pitch_parselmouth
 def estimate_midi(
         transcriptions: str,
         waveforms: str,
-        rest_uv_ratio: float = 0.95
+        rest_uv_ratio: float = 0.85
 ):
     transcriptions = pathlib.Path(transcriptions).resolve()
     waveforms = pathlib.Path(waveforms).resolve()
     with open(transcriptions, 'r', encoding='utf8') as f:
         reader = csv.DictReader(f)
-        items: list[dict] = []
+        items: List[dict] = []
         for item in reader:
             items.append(item)
 
@@ -57,15 +58,15 @@ def estimate_midi(
             end = start + dur
             start_idx = math.floor(start / timestep)
             end_idx = math.ceil(end / timestep)
-            if np.sum(uv[start_idx: end_idx]) >= rest_uv_ratio * (end_idx - start_idx):
+            word_pitch = pitch[start_idx: end_idx]
+            word_uv = uv[start_idx: end_idx]
+            word_valid_pitch = np.extract(~word_uv & (word_pitch >= 0), word_pitch)
+            if len(word_valid_pitch) < (1 - rest_uv_ratio) * (end_idx - start_idx):
                 note_seq.append('rest')
             else:
-                word_pitch = pitch[start_idx: end_idx]
-                word_uv = uv[start_idx: end_idx]
-                word_pitch = np.extract(~word_uv, word_pitch)
-                counts = np.bincount(np.round(word_pitch).astype(np.int64))
+                counts = np.bincount(np.round(word_valid_pitch).astype(np.int64))
                 midi = counts.argmax()
-                midi = np.mean(word_pitch[(word_pitch >= midi - 0.5) & (word_pitch < midi + 0.5)])
+                midi = np.mean(word_valid_pitch[(word_valid_pitch >= midi - 0.5) & (word_valid_pitch < midi + 0.5)])
                 note_seq.append(librosa.midi_to_note(midi, cents=True, unicode=False))
             note_dur.append(dur)
 

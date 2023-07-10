@@ -96,16 +96,9 @@ def cli():
     metavar="TRANSCRIPTIONS",
 )
 @click.argument(
-    "ds_folder",
+    "wavs_folder",
     type=click.Path(file_okay=False, resolve_path=True, path_type=pathlib.Path),
     metavar="FOLDER",
-)
-@click.option(
-    "--overwrite",
-    "-f",
-    is_flag=True,
-    default=False,
-    help="Overwrite existing DS files",
 )
 @click.option(
     "--tolerance",
@@ -117,17 +110,14 @@ def cli():
 )
 @click.option("--hop_size", "-h", type=int, default=512, help="Hop size for f0_seq", metavar="INT")
 @click.option("--sample_rate", "-s", type=int, default=44100, help="Sample rate of audio", metavar="INT")
-def csv2ds(transcription_file, ds_folder, overwrite, tolerance, hop_size, sample_rate):
+def csv2ds(transcription_file, wavs_folder, tolerance, hop_size, sample_rate):
     """Convert a transcription file to DS file"""
-    wavs_folder = transcription_file.parent / "wavs"
     assert wavs_folder.is_dir(), "wavs folder not found."
-
-    ds_folder.mkdir(parents=True, exist_ok=True)
     with open(transcription_file, "r", encoding="utf-8") as f:
         for trans_line in tqdm(csv.DictReader(f)):
             item_name = trans_line["name"]
             wav_fn = wavs_folder / f"{item_name}.wav"
-            ds_fn = ds_folder / f"{item_name}.ds"
+            ds_fn = wavs_folder / f"{item_name}.ds"
             ph_dur = list(map(Decimal, trans_line["ph_dur"].strip().split()))
             ph_num = list(map(int, trans_line["ph_num"].strip().split()))
             note_seq = trans_line["note_seq"].strip().split()
@@ -172,9 +162,8 @@ def csv2ds(transcription_file, ds_folder, overwrite, tolerance, hop_size, sample
                 }
             ]
 
-            if not ds_fn.exists() or overwrite:
-                with open(ds_fn, "w", encoding="utf-8") as f:
-                    json.dump(ds_content, f, ensure_ascii=False, indent=4)
+            with open(ds_fn, "w", encoding="utf-8") as f:
+                json.dump(ds_content, f, ensure_ascii=False, indent=4)
 
 
 @click.command(help="Convert DS files to a transcription file")
