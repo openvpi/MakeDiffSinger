@@ -73,7 +73,14 @@ def add_ph_num(
                 #final check
                 ph_dur = [float(d) for d in item['ph_dur'].split()]
                 if sum(ph_num) != len(ph_dur):
-                    print( f'ph_num {sum(ph_num)} does not sum to number of phones {len(ph_dur)} in {item["name"]}.' )
+                    print( f'  ph_num {sum(ph_num)} does not sum to number of phones {len(ph_dur)} in {item["name"]}.' )
+                    print( f'csv_____: {item["ph_seq"]}')
+                    errphones = textgrid_data.getTier('phones').entries
+                    tgphones = []
+                    for tg_phone in errphones:
+                        tgphones.append(tg_phone.label)
+                    print( f'textgrid: {" ".join(tgphones)}')
+
 
             out_data.append(item)
 
@@ -84,7 +91,7 @@ def add_ph_num(
         writer.writerows(out_data)
 
 def is_joinable_silence(phone_str):
-    if phone_str == 'pau' or phone_str == 'SP' or phone_str == 'AS':
+    if phone_str in ['pau','SP','AS']:
         return True
     else:
         return False
@@ -118,12 +125,14 @@ def generate_ph(textgrid_data, csv_data, split_using_file, split_phones):
     else:
         ph_num = generate_ph_word_num(words,phones)
 
+#    print(f' Adding in [{start_diff}] at start and [{end_diff}] at end')
+#    print(" ".join(map(str,ph_num)))
     #add in any differneces between the csv and the TextGrid data
     if start_diff > 0:
         ph_num[0] += start_diff
     if end_diff > 0:
         ph_num[-1] += end_diff
-
+#    print(" ".join(map(str,ph_num)))
     return ph_num
 
 # NOTE: The no_midi_preperation notebook pipeline adds in random SP at start and end of the textgrid data
@@ -139,22 +148,27 @@ def generate_ph(textgrid_data, csv_data, split_using_file, split_phones):
 # 
 # where sh and zh are consonants, AP, ir and e can be regarded as vowels. There are one special case that a word can start with a consonants: isolated consonants. In this case, all phones in the word are consonants.
 def generate_ph_vowel_num(words, phones, split_phones):
-
+#    print('VOWELS')
     ph_num = []
     phone_index = 0
     phone_count = 0
     ph_labels = []
     vowel_index = []
-    skip_next = False
+    appended = False
+
 
     # each "syllable" gets split by phonemes in split_phones
     for phone in phones:
+        appended = False
         phone_count += 1
         ph_labels.append(phone.label)
         if phone.label in split_phones:
             ph_num.append(phone_count)
             phone_count = 0
-    
+            appended = True
+
+    if(not appended and phone_count > 0):
+        ph_num.append(phone_count)
     return ph_num
 
 

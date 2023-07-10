@@ -70,7 +70,7 @@ If you used the [no midi pipeline](https://github.com/openvpi/DiffSinger/blob/ma
 
 
 The no_midi_preperation notebook pipeline adds in random SP at start and end of the textgrid data, this is taken into account but I recommend a manual sanity check after running this
-   ```bash
+```
    python textgrid_add_ph_num.py path/to/your/transcriptions.csv --textgrid_dir path/to/your/textgrid_dir --split_phones_file /path/to/split_on_phones.txt
    ```
 an example [split_phones_file is here](split_on_phones.txt)
@@ -106,13 +106,14 @@ python estimate_midi.py path/to/your/transcriptions.csv path/to/your/wavs
 
 ### 5.1 take apart transcriptions.csv into DS files
 
+Make sure your wave fiels are in a subfodler called "wavs"
 Run:
 
 ```bash
 python convert_ds.py csv2ds path/to/your/transcriptions.csv path/to/your/wavs
 ```
 
-This will generate *.ds files matching your *.wav files in the same directory.
+This will generate *.ds files matching your *.wav files in the "wavs" directory.
 
 ### 5.2 manually edit MIDI sequences
 
