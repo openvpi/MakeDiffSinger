@@ -34,7 +34,7 @@ def estimate_midi(
         item: dict
         ph_dur = [float(d) for d in item['ph_dur'].split()]
         ph_num = [int(n) for n in item['ph_num'].split()]
-        assert sum(ph_num) == len(ph_dur), f'ph_num does not sum to number of phones in \'{item["name"]}\'.'
+        assert sum(ph_num) == len(ph_dur), f'ph_num ({sum(ph_num)}) does not sum to number of phones ({len(ph_dur)}) in \'{item["name"]}\'.'
 
         word_dur = []
         i = 0
