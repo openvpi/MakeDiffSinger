@@ -82,7 +82,7 @@ def validate_labels(dir, dictionary):
     plt.savefig(fname=phoneme_summary,
                 bbox_inches='tight',
                 pad_inches=0.25)
-    print(f'Phoneme distribution summary saved to \'{phoneme_summary}\'.')
+    print(f'Phoneme distribution summary saved to {phoneme_summary}')
 
 
 if __name__ == '__main__':

@@ -63,4 +63,4 @@ def build_csv(wavs, tg, dataset, skip_silence_insertion):
         writer.writeheader()
         writer.writerows(transcriptions)
 
-    print(f'All wavs and transcriptions saved in {dataset}.')
+    print(f'All wavs and transcriptions saved in {dataset}')

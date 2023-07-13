@@ -6,8 +6,8 @@ This pipeline will guide you to build your dataset from raw recordings with MFA 
 
 This pipeline will require your dictionary having its corresponding MFA pretrained model. You can see currently supported dictionaries and download their MFA models in the table below:
 
-|  dictionary name   |    dictionary file     |                          MFA model                           |
-| :----------------: | :--------------------: | :----------------------------------------------------------: |
+|  dictionary name   |    dictionary file     |                                          MFA model                                           |
+|:------------------:|:----------------------:|:--------------------------------------------------------------------------------------------:|
 | Opencpop extension | opencpop-extension.txt | [link](https://huggingface.co/datasets/fox7005/tool/resolve/main/mfa-opencpop-extension.zip) |
 
 Your recordings must meet the following conditions:
@@ -115,6 +115,12 @@ python enhance_tg.py --wavs path/to/your/segments/ --dictionary path/to/your/dic
 NOTE: There are other useful arguments of this script. If you understand them, you can try to get better results through adjusting those parameters.
 
 The final TextGrids can be manually edited and saved for future use.
+
+If you are interested in the word-level pitch distribution of your dataset, run the following command:
+
+```bash
+python summary_pitch.py --wavs path/to/your/segments/ --tg path/to/final/textgrids/
+```
 
 ## 4. Build the final dataset
 
