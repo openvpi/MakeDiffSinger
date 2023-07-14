@@ -16,7 +16,7 @@ from textgrid import TextGrid
 @click.option('--dataset', 'Path to transcriptions.csv')
 @click.option('--skip_silence_insertion', is_flag=True, show_default=True,
               help='Do not insert silence around segments')
-def build_csv(wavs, tg, dataset, skip_silence_insertion):
+def build_dataset(wavs, tg, dataset, skip_silence_insertion):
     wavs = pathlib.Path(wavs)
     tg_dir = pathlib.Path(tg)
     del tg
@@ -64,3 +64,7 @@ def build_csv(wavs, tg, dataset, skip_silence_insertion):
         writer.writerows(transcriptions)
 
     print(f'All wavs and transcriptions saved in {dataset}')
+
+
+if __name__ == '__main__':
+    build_dataset()
