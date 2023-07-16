@@ -11,9 +11,9 @@ from textgrid import TextGrid
 
 
 @click.command(help='Collect phoneme alignments into transcriptions.csv')
-@click.option('--wavs', 'Path to the segments directory')
-@click.option('--tg', 'Path to the final TextGrids directory')
-@click.option('--dataset', 'Path to transcriptions.csv')
+@click.option('--wavs', help='Path to the segments directory')
+@click.option('--tg', help='Path to the final TextGrids directory')
+@click.option('--dataset', help='Path to transcriptions.csv')
 @click.option('--skip_silence_insertion', is_flag=True, show_default=True,
               help='Do not insert silence around segments')
 def build_dataset(wavs, tg, dataset, skip_silence_insertion):
