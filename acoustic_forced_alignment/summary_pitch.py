@@ -28,7 +28,7 @@ def summary_pitch(wavs, tg):
         tg = TextGrid()
         tg.read(tg_dir / wavfile.with_suffix('.TextGrid').name)
         timestep = 0.01
-        f0 = pm.Sound(wavfile).to_pitch_ac(
+        f0 = pm.Sound(str(wavfile)).to_pitch_ac(
             time_step=timestep,
             voicing_threshold=voicing_thresh_vowel,
             pitch_floor=f0_min,
