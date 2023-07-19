@@ -135,7 +135,7 @@ The recordings will be arranged like [this](../README.md#diffsinger-dataset-stru
 Run:
 
 ```bash
-python build_dataset.py --wav path/to/your/segments/ --tg path/to/final/textgrids/ --dataset path/to/your/dataset/
+python build_dataset.py --wavs path/to/your/segments/ --tg path/to/final/textgrids/ --dataset path/to/your/dataset/
 ```
 
 NOTE: this will insert random silence parts around each segments by default for better `SP` stability. If you do not need these silence parts, please use the `--skip_silence_insertion` option.
