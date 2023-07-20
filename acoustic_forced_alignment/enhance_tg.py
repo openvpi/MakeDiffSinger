@@ -58,7 +58,7 @@ def enhance_tg(
         textgrid.read(str(tgfile))
         words = textgrid[0]
         phones = textgrid[1]
-        sound = pm.Sound(wavfile)
+        sound = pm.Sound(str(wavfile))
         f0_voicing_breath = sound.to_pitch_ac(
             time_step=time_step,
             voicing_threshold=voicing_thresh_breath,
