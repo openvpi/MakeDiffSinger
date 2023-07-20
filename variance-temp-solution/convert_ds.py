@@ -113,6 +113,8 @@ def cli():
 def csv2ds(transcription_file, wavs_folder, tolerance, hop_size, sample_rate):
     """Convert a transcription file to DS file"""
     assert wavs_folder.is_dir(), "wavs folder not found."
+    out_ds = {}
+    out_exists = []
     with open(transcription_file, "r", encoding="utf-8") as f:
         for trans_line in tqdm(csv.DictReader(f)):
             item_name = trans_line["name"]
@@ -161,9 +163,15 @@ def csv2ds(transcription_file, wavs_folder, tolerance, hop_size, sample_rate):
                     "f0_timestep": str(f0_timestep),
                 }
             ]
-
+            out_ds[ds_fn] = ds_content
+            if ds_fn.exists():
+                out_exists.append(ds_fn)
+    if not out_exists or click.confirm(f"Overwrite {len(out_exists)} existing DS files?", abort=False):
+        for ds_fn, ds_content in out_ds.items():
             with open(ds_fn, "w", encoding="utf-8") as f:
                 json.dump(ds_content, f, ensure_ascii=False, indent=4)
+    else:
+        click.echo("Aborted.")
 
 
 @click.command(help="Convert DS files to a transcription file")
