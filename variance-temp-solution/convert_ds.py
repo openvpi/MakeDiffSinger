@@ -9,7 +9,7 @@ import librosa
 import numpy as np
 from tqdm import tqdm
 
-from get_pitch import get_pitch_parselmouth
+from get_pitch import get_pitch
 
 
 def try_resolve_note_slur_by_matching(ph_dur, ph_num, note_dur, tol):
@@ -110,7 +110,8 @@ def cli():
 )
 @click.option("--hop_size", "-h", type=int, default=512, help="Hop size for f0_seq", metavar="INT")
 @click.option("--sample_rate", "-s", type=int, default=44100, help="Sample rate of audio", metavar="INT")
-def csv2ds(transcription_file, wavs_folder, tolerance, hop_size, sample_rate):
+@click.option("--pe", type=str, default="parselmouth", help='Pitch extractor (parselmouth, rmvpe)', metavar="ALGORITHM")
+def csv2ds(transcription_file, wavs_folder, tolerance, hop_size, sample_rate, pe):
     """Convert a transcription file to DS file"""
     assert wavs_folder.is_dir(), "wavs folder not found."
     out_ds = {}
@@ -148,7 +149,7 @@ def csv2ds(transcription_file, wavs_folder, tolerance, hop_size, sample_rate):
             wav, _ = librosa.load(wav_fn, sr=sample_rate, mono=True)
             # length = len(wav) + (win_size - hop_size) // 2 + (win_size - hop_size + 1) // 2
             # length = ceil((length - win_size) / hop_size)
-            f0_timestep, f0, _ = get_pitch_parselmouth(wav, hop_size, sample_rate)
+            f0_timestep, f0, _ = get_pitch(pe, wav, hop_size, sample_rate)
             ds_content = [
                 {
                     "offset": 0.0,

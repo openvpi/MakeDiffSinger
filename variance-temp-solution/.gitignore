@@ -7,3 +7,6 @@ local_tools/
 
 .vscode
 .ipynb_checkpoints/
+
+assets/*
+!assets/.gitkeep

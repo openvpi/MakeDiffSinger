@@ -8,17 +8,20 @@ import numpy as np
 import tqdm
 from typing import List
 
-from get_pitch import get_pitch_parselmouth
+from get_pitch import get_pitch
 
 
 @click.command(help='Estimate note pitch from transcriptions and corresponding waveforms')
 @click.argument('transcriptions', metavar='TRANSCRIPTIONS')
 @click.argument('waveforms', metavar='WAVS')
+@click.argument('--pe', metavar='ALGORITHM', default='parselmouth',
+                help='Pitch extractor (parselmouth, rmvpe)')
 @click.option('--rest_uv_ratio', metavar='RATIO', type=float, default=0.85,
               help='The minimum percentage of unvoiced length for a note to be regarded as rest')
 def estimate_midi(
         transcriptions: str,
         waveforms: str,
+        pe: str = 'parselmouth',
         rest_uv_ratio: float = 0.85
 ):
     transcriptions = pathlib.Path(transcriptions).resolve()
@@ -44,7 +47,7 @@ def estimate_midi(
 
         total_secs = sum(ph_dur)
         waveform, _ = librosa.load(waveforms / (item['name'] + '.wav'), sr=44100, mono=True)
-        _, f0, uv = get_pitch_parselmouth(waveform, 512, 44100)
+        _, f0, uv = get_pitch(pe, waveform, 512, 44100)
         pitch = librosa.hz_to_midi(f0)
         if pitch.shape[0] < total_secs / timestep:
             pad = math.ceil(total_secs / timestep) - pitch.shape[0]
