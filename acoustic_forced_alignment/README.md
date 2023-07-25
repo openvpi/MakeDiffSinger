@@ -78,7 +78,7 @@ We use [Montreal Forced Aligner](https://github.com/MontrealCorpusTools/Montreal
 MFA fails on some platforms if the WAVs are not in 16kHz 16bit PCM format. The following command will reformat your recordings and copy the labels to another temporary directory. You may delete those temporary files afterwards.
 
 ```bash
-python reformat_wav.py --src path/to/your/segments/ --dst path/to/tmp/dir/
+python reformat_wavs.py --src path/to/your/segments/ --dst path/to/tmp/dir/
 ```
 
 ### 3.2 Run MFA on the corpus
