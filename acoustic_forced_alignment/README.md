@@ -12,11 +12,11 @@ This pipeline will require your dictionary having its corresponding MFA pretrain
 
 Your recordings must meet the following conditions:
 
-**1.** They must be in one single folder. Files in sub-folders will be ignored.
-**2.** They must be in WAV format.
-**3.** They must have a sampling rate higher than 32 kHz.
-**4.** They should be clean, unaccompanied voices with no significant noise or reverb.
-**5.** They should contain only voices from one single human.
+1. They must be in one single folder. Files in sub-folders will be ignored.
+2. They must be in WAV format.
+3. They must have a sampling rate higher than 32 kHz.
+4. They should be clean, unaccompanied voices with no significant noise or reverb.
+5. They should contain only voices from one single human.
 
 <font color="red">**NOTICE:**</font> Before you train a model, you must obtain permission from the copyright holder of the dataset and make sure the provider is fully aware that you will train a model from their data, that you will or will not distribute the synthesized voices and model weights, and the potential risks of this kind of activity.
 
