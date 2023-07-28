@@ -14,8 +14,8 @@ from get_pitch import get_pitch
 @click.command(help='Estimate note pitch from transcriptions and corresponding waveforms')
 @click.argument('transcriptions', metavar='TRANSCRIPTIONS')
 @click.argument('waveforms', metavar='WAVS')
-@click.argument('--pe', metavar='ALGORITHM', default='parselmouth',
-                help='Pitch extractor (parselmouth, rmvpe)')
+@click.option('--pe', metavar='ALGORITHM', default='parselmouth',
+              help='Pitch extractor (parselmouth, rmvpe)')
 @click.option('--rest_uv_ratio', metavar='RATIO', type=float, default=0.85,
               help='The minimum percentage of unvoiced length for a note to be regarded as rest')
 def estimate_midi(
