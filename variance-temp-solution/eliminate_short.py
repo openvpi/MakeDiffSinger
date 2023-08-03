@@ -80,7 +80,7 @@ def eliminate_short(
                 note_dur_new += [n[1] for n in word_note_seq]
                 note_slur_new += [pos > 0 for pos in range(len(word_note_seq))]
             param['note_seq'] = ' '.join(note_seq_new)
-            param['note_dur'] = ' '.join(str(d) for d in note_dur_new)
+            param['note_dur'] = ' '.join(str(round(d, 6)) for d in note_dur_new)
             param['note_slur'] = ' '.join(str(int(s)) for s in note_slur_new)
 
         with open(ds, 'w', encoding='utf8') as f:

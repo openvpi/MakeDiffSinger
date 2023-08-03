@@ -109,7 +109,7 @@ def cli():
     "--tolerance",
     "-t",
     type=float,
-    default=0.001,
+    default=0.005,
     help="Tolerance for ph_dur/note_dur mismatch",
     metavar="FLOAT",
 )
@@ -160,10 +160,10 @@ def csv2ds(transcription_file, wavs_folder, tolerance, hop_size, sample_rate, pe
                     "offset": 0.0,
                     "text": trans_line["ph_seq"],
                     "ph_seq": trans_line["ph_seq"],
-                    "ph_dur": trans_line["ph_dur"],
+                    "ph_dur": " ".join(str(round(d, 6)) for d in ph_dur),
                     "ph_num": trans_line["ph_num"],
                     "note_seq": " ".join(note_seq),
-                    "note_dur": " ".join(map(str, note_dur)),
+                    "note_dur": " ".join(str(round(d, 6)) for d in note_dur),
                     "note_slur": " ".join(map(str, note_slur)),
                     "f0_seq": " ".join(map("{:.1f}".format, f0)),
                     "f0_timestep": str(f0_timestep),
@@ -225,16 +225,16 @@ def ds2csv(ds_folder, transcription_file, curve_file, overwrite):
                     {
                         "name": fp.stem,
                         "ph_seq": ds[0]["ph_seq"],
-                        "ph_dur": ds[0]["ph_dur"],
+                        "ph_dur": " ".join(str(round(Decimal(d), 6)) for d in ds[0]["ph_dur"].split()),
                         "ph_num": ds[0]["ph_num"],
                         "note_seq": ds[0]["note_seq"],
-                        "note_dur": ds[0]["note_dur"],
+                        "note_dur": " ".join(str(round(Decimal(d), 6)) for d in ds[0]["note_dur"].split()),
                         # "note_slur": ds[0]["note_slur"],
                     }
                 )
                 assert fp.stem not in curves, f"{fp.stem} already exists in curves."
                 curves[fp.stem] = {
-                    "f0_seq": ds[0]["f0_seq"],
+                    "f0_seq": " ".join(str(round(Decimal(d), 1)) for d in ds[0]["f0_seq"].split()),
                     "f0_timestep": float(ds[0]["f0_timestep"])
                 }
     # Lone DS files.
@@ -254,15 +254,15 @@ def ds2csv(ds_folder, transcription_file, curve_file, overwrite):
                         {
                             "name": item_name,
                             "ph_seq": sub_ds["ph_seq"],
-                            "ph_dur": sub_ds["ph_dur"],
+                            "ph_dur": " ".join(str(round(Decimal(d), 6)) for d in sub_ds["ph_dur"].split()),
                             "ph_num": sub_ds["ph_num"],
                             "note_seq": sub_ds["note_seq"],
-                            "note_dur": sub_ds["note_dur"],
+                            "note_dur": " ".join(str(round(Decimal(d), 6)) for d in sub_ds["note_dur"].split()),
                             # "note_slur": sub_ds["note_slur"],
                         }
                     )
                     curves[item_name] = {
-                        "f0_seq": sub_ds["f0_seq"],
+                        "f0_seq": " ".join(str(round(Decimal(d), 1)) for d in sub_ds["f0_seq"].split()),
                         "f0_timestep": float(sub_ds["f0_timestep"])
                     }
     with open(transcription_file, "w", newline="", encoding="utf-8") as f:

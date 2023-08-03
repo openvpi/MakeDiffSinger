@@ -76,7 +76,7 @@ def estimate_midi(
             start = end
 
         item['note_seq'] = ' '.join(note_seq)
-        item['note_dur'] = ' '.join([str(d) for d in note_dur])
+        item['note_dur'] = ' '.join([str(round(d, 6)) for d in note_dur])
 
     with open(transcriptions, 'w', encoding='utf8', newline='') as f:
         writer = csv.DictWriter(f, fieldnames=['name', 'ph_seq', 'ph_dur', 'ph_num', 'note_seq', 'note_dur'])
