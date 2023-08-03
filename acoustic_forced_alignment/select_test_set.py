@@ -16,11 +16,33 @@ import yaml
 )
 @click.option(
     '--rel_path',
+    required=True,
     type=click.Path(file_okay=False, dir_okay=True, resolve_path=True, path_type=Path),
-    default=Path('.'),
     help='Path that is relative to the paths mentioned in the config file.'
 )
-def select_test_set(config, rel_path):
+@click.option(
+    '--min', '_min',
+    show_default=True,
+    type=click.IntRange(min=1),
+    default=10,
+    help='Minimum number of test samples.'
+)
+@click.option(
+    '--max', '_max',
+    show_default=True,
+    type=click.IntRange(min=1),
+    default=20,
+    help='Maximum number of test samples (note that each speaker will have at least one test sample).'
+)
+@click.option(
+    '--per_speaker',
+    show_default=True,
+    type=click.IntRange(min=1),
+    default=4,
+    help='Expected number of test samples per speaker.'
+)
+def select_test_set(config, rel_path, _min, _max, per_speaker):
+    assert _min <= _max, 'min must be smaller or equal to max'
     with open(config, 'r', encoding='utf8') as f:
         hparams = yaml.safe_load(f)
 
@@ -61,7 +83,7 @@ def select_test_set(config, rel_path):
         training_cases.append(training_case)
 
     test_prefixes = []
-    total = min(20, max(10, 4 * len(training_cases)))
+    total = min(_max, max(_min, per_speaker * len(training_cases)))
     quotient, remainder = total // len(training_cases), total % len(training_cases)
     if quotient == 0:
         test_counts = [1] * len(training_cases)
