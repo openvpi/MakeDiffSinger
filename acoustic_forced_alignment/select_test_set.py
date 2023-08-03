@@ -16,8 +16,8 @@ import yaml
 )
 @click.option(
     '--rel_path',
-    required=True,
     type=click.Path(file_okay=False, dir_okay=True, resolve_path=True, path_type=Path),
+    default=None,
     help='Path that is relative to the paths mentioned in the config file.'
 )
 @click.option(
@@ -49,7 +49,7 @@ def select_test_set(config, rel_path, _min, _max, per_speaker):
     spk_map = None
     spk_ids = hparams['spk_ids']
     speakers = hparams['speakers']
-    raw_data_dirs = hparams['raw_data_dir']
+    raw_data_dirs = list(map(Path, hparams['raw_data_dir']))
     assert isinstance(speakers, list), 'Speakers must be a list'
     assert len(speakers) == len(raw_data_dirs), \
         'Number of raw data dirs must equal number of speaker names!'
@@ -68,7 +68,7 @@ def select_test_set(config, rel_path, _min, _max, per_speaker):
             raise ValueError(f'Invalid speaker ID assignment. Name \'{spk_name}\' is assigned '
                                 f'with different speaker IDs: {spk_map[spk_name]} and {spk_id}.')
         spk_map[spk_name] = spk_id
-        path_spk_map[spk_id].append((ds_id, rel_path / raw_path))
+        path_spk_map[spk_id].append((ds_id, rel_path / raw_path if rel_path else raw_path))
 
     training_cases = []
     for spk_raw_dirs in path_spk_map.values():

@@ -81,6 +81,8 @@ MFA fails on some platforms if the WAVs are not in 16kHz 16bit PCM format. The f
 python reformat_wavs.py --src path/to/your/segments/ --dst path/to/tmp/dir/
 ```
 
+NOTE: `--normalize` can be added to normalize the audio files with respect to the peak value of the whole segments. This is especially helpful on aspiration detection during TextGrid enhancement if the original segments are too quite.
+
 ### 3.2 Run MFA on the corpus
 
 MFA will align your labels to your recordings and save the results to TextGrid files.
@@ -138,7 +140,29 @@ Run:
 python build_dataset.py --wavs path/to/your/segments/ --tg path/to/final/textgrids/ --dataset path/to/your/dataset/
 ```
 
-NOTE: this will insert random silence parts around each segments by default for better `SP` stability. If you do not need these silence parts, please use the `--skip_silence_insertion` option.
+NOTE 1: This will insert random silence parts around each segments by default for better `SP` stability. If you do not need these silence parts, please use the `--skip_silence_insertion` option.
+
+NOTE 2: `--wav_subtype` can be used to specify the bit-depth of the saved WAV files. Options are `PCM_16` (default), `PCM_24`, `PCM_32`, `FLOAT`, and `DOUBLE`.
 
 After doing all things above, you should put it into data/ of the DiffSinger main repository. Now, your dataset can be used to train DiffSinger acoustic models. If you want to train DiffSinger variance models, please follow this [instructions](../variance-temp-solution/README.md).
 
+
+## 5. Write configuration file
+
+Copy the template configration file from `configs/templates` in the DiffSinger repository to your data folder, or a new folder if working with multi-speaker model. Specify required fields in the configurations, check `DiffSinger/docs/ConfigurationSchemas.md` for help on the meanings of those fields.
+
+For automatic validation set selection, you can leave the following field as empty. If the field is not empty, the script will prompt a overwrite confirmation later.
+```yaml
+...
+test_prefixes:
+...
+```
+
+And run:
+```bash
+python select_test_set.py path/to/your/config.yaml [--rel_path <PATH>]
+```
+
+NOTE 1: `--rel_path` is probably necessary if there are relative paths in your config file. If only absolute paths exist in it, you can omit this argument.
+
+NOTE 2: There are other useful arguments of this script. You can use them to change the total number of validation samples.
