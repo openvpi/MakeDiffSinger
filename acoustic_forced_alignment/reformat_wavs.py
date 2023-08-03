@@ -1,16 +1,22 @@
 import pathlib
 import shutil
 
+import click
 import librosa
+import numpy as np
 import soundfile
 import tqdm
-import click
 
 
 @click.command(help='Reformat the WAV files to 16kHz, 16bit PCM mono format and copy labels')
 @click.option('--src', required=True, help='Source segments directory')
 @click.option('--dst', required=True, help='Target segments directory')
-def reformat_wavs(src, dst):
+@click.option(
+    '--normalize',
+    is_flag=True, show_default=True, default=False,
+    help='Normalize the audio (peak calculated over all segments)'
+)
+def reformat_wavs(src, dst, normalize):
     src = pathlib.Path(src).resolve()
     dst = pathlib.Path(dst).resolve()
     assert src != dst, 'src and dst should not be the same path'
@@ -18,9 +24,16 @@ def reformat_wavs(src, dst):
     dst.mkdir(parents=True, exist_ok=True)
     samplerate = 16000
     filelist = list(src.glob('*.wav'))
+    max_y = 1.0
+    if normalize:
+        max_y = 0.0
+        for file in tqdm.tqdm(filelist):
+            y, _ = librosa.load(file, sr=samplerate, mono=True)
+            max_y = max(max_y, np.max(np.abs(y)))
+        max_y += 0.01
     for file in tqdm.tqdm(filelist):
         y, _ = librosa.load(file, sr=samplerate, mono=True)
-        soundfile.write((dst / file.name), y, samplerate, subtype='PCM_16')
+        soundfile.write((dst / file.name), y / max_y, samplerate, subtype='PCM_16')
         annotation = file.with_suffix('.lab')
         shutil.copy(annotation, dst)
     print('Reformatting and copying done.')
