@@ -118,6 +118,8 @@ This will generate a new transcriptions.csv from the DS files you just edited. A
 
 Now the transcriptions.csv can be used for all functionalities of DiffSinger training.
 
+`convert_ds.py ds2csv` supports DS files which have no corresponding WAV files. All sentences in these files will be assigned a virtual item name, and inserted into the transcriptions. This is a preparation to support using DS tuning projects to train a variance model. In addition, `curves.json` file is written to support `f0` sequence refinement.
+
 ## (Appendix) other useful tools
 
 ### RMVPE pitch extraction algorithm

@@ -3,6 +3,7 @@ import json
 import pathlib
 from decimal import Decimal
 from math import isclose
+import uuid
 
 import click
 import librosa
@@ -37,7 +38,9 @@ def try_resolve_note_slur_by_matching(ph_dur, ph_num, note_dur, tol):
             new_note_dur.append(note_pos[idx_note])
             idx_note += 1
             slur = True
-    return np.diff(new_note_dur, prepend=Decimal("0.0")).tolist(), note_slur
+    ret_note_dur = np.diff(new_note_dur, prepend=Decimal("0.0")).tolist()
+    assert len(ret_note_dur) == len(note_slur)
+    return ret_note_dur, note_slur
 
 
 def try_resolve_slur_by_slicing(ph_dur, ph_num, note_seq, note_dur, tol):
@@ -75,7 +78,9 @@ def try_resolve_slur_by_slicing(ph_dur, ph_num, note_seq, note_dur, tol):
                     new_note_dur.append(word_pos[idx_word])
                     note_slur.append(1 if slur else 0)
         idx_word += 1
-    return new_note_seq, np.diff(new_note_dur, prepend=Decimal("0.0")).tolist(), note_slur
+    ret_note_dur = np.diff(new_note_dur, prepend=Decimal("0.0")).tolist()
+    assert len(new_note_seq) == len(ret_note_dur) == len(note_slur)
+    return new_note_seq, ret_note_dur, note_slur
 
 
 @click.group()
@@ -104,13 +109,13 @@ def cli():
     "--tolerance",
     "-t",
     type=float,
-    default=0.001,
+    default=0.005,
     help="Tolerance for ph_dur/note_dur mismatch",
     metavar="FLOAT",
 )
 @click.option("--hop_size", "-h", type=int, default=512, help="Hop size for f0_seq", metavar="INT")
 @click.option("--sample_rate", "-s", type=int, default=44100, help="Sample rate of audio", metavar="INT")
-@click.option("--pe", type=str, default="parselmouth", help='Pitch extractor (parselmouth, rmvpe)', metavar="ALGORITHM")
+@click.option("--pe", type=str, default="parselmouth", help="Pitch extractor (parselmouth, rmvpe)", metavar="ALGORITHM")
 def csv2ds(transcription_file, wavs_folder, tolerance, hop_size, sample_rate, pe):
     """Convert a transcription file to DS file"""
     assert wavs_folder.is_dir(), "wavs folder not found."
@@ -141,7 +146,7 @@ def csv2ds(transcription_file, wavs_folder, tolerance, hop_size, sample_rate, pe
                         ph_dur, ph_num, note_dur, tolerance
                     )
                 except ValueError:
-                    # logging.warning(f'note_slur is not resolved by matching for {item_name}')
+                    # logging.warning(f"note_slur is not resolved by matching for {item_name}")
                     note_seq, note_dur, note_slur = try_resolve_slur_by_slicing(
                         ph_dur, ph_num, note_seq, note_dur, tolerance
                     )
@@ -155,10 +160,10 @@ def csv2ds(transcription_file, wavs_folder, tolerance, hop_size, sample_rate, pe
                     "offset": 0.0,
                     "text": trans_line["ph_seq"],
                     "ph_seq": trans_line["ph_seq"],
-                    "ph_dur": trans_line["ph_dur"],
+                    "ph_dur": " ".join(str(round(d, 6)) for d in ph_dur),
                     "ph_num": trans_line["ph_num"],
                     "note_seq": " ".join(note_seq),
-                    "note_dur": " ".join(map(str, note_dur)),
+                    "note_dur": " ".join(str(round(d, 6)) for d in note_dur),
                     "note_slur": " ".join(map(str, note_slur)),
                     "f0_seq": " ".join(map("{:.1f}".format, f0)),
                     "f0_timestep": str(f0_timestep),
@@ -175,7 +180,7 @@ def csv2ds(transcription_file, wavs_folder, tolerance, hop_size, sample_rate, pe
         click.echo("Aborted.")
 
 
-@click.command(help="Convert DS files to a transcription file")
+@click.command(help="Convert DS files to a transcription and curve files")
 @click.argument(
     "ds_folder",
     type=click.Path(file_okay=False, resolve_path=True, exists=True, path_type=pathlib.Path),
@@ -186,6 +191,13 @@ def csv2ds(transcription_file, wavs_folder, tolerance, hop_size, sample_rate, pe
     type=click.Path(file_okay=True, dir_okay=False, resolve_path=True, path_type=pathlib.Path),
     metavar="TRANSCRIPTIONS",
 )
+@click.argument(
+    "curve_file",
+    type=str,
+    required=False,
+    default=None,
+    metavar="CURVES",
+)
 @click.option(
     "--overwrite",
     "-f",
@@ -193,28 +205,66 @@ def csv2ds(transcription_file, wavs_folder, tolerance, hop_size, sample_rate, pe
     default=False,
     help="Overwrite existing transcription file",
 )
-def ds2csv(ds_folder, transcription_file, overwrite):
+def ds2csv(ds_folder, transcription_file, curve_file, overwrite):
     """Convert DS files to a transcription file"""
-    if not overwrite and transcription_file.is_file():
-        raise FileExistsError(f"{transcription_file} already exists.")
-    from glob import glob
+    if curve_file is None:
+        curve_file = transcription_file.parent / "curves.json"
+    else:
+        curve_file = pathlib.Path(curve_file)
+    if not overwrite and (transcription_file.exists() or curve_file.exists()):
+        raise FileExistsError(f"{transcription_file} or {curve_file} already exist.")
 
     transcriptions = []
-    for fn in tqdm(glob(str(ds_folder / "*.ds")), ncols=80):
-        fp = pathlib.Path(fn)
-        with open(fp, "r", encoding="utf-8") as f:
-            ds = json.load(f)
-            transcriptions.append(
-                {
-                    "name": fp.stem,
-                    "ph_seq": ds[0]["ph_seq"],
-                    "ph_dur": ds[0]["ph_dur"],
-                    "ph_num": ds[0]["ph_num"],
-                    "note_seq": ds[0]["note_seq"],
-                    "note_dur": ds[0]["note_dur"],
-                    # "note_slur": ds[0]["note_slur"],
+    curves = {}
+    # records that have corresponding wav files, assuming it's midi annotation
+    for fp in tqdm(ds_folder.glob("*.ds"), ncols=80):
+        if fp.with_suffix(".wav").exists():
+            with open(fp, "r", encoding="utf-8") as f:
+                ds = json.load(f)
+                transcriptions.append(
+                    {
+                        "name": fp.stem,
+                        "ph_seq": ds[0]["ph_seq"],
+                        "ph_dur": " ".join(str(round(Decimal(d), 6)) for d in ds[0]["ph_dur"].split()),
+                        "ph_num": ds[0]["ph_num"],
+                        "note_seq": ds[0]["note_seq"],
+                        "note_dur": " ".join(str(round(Decimal(d), 6)) for d in ds[0]["note_dur"].split()),
+                        # "note_slur": ds[0]["note_slur"],
+                    }
+                )
+                assert fp.stem not in curves, f"{fp.stem} already exists in curves."
+                curves[fp.stem] = {
+                    "f0_seq": " ".join(str(round(Decimal(d), 1)) for d in ds[0]["f0_seq"].split()),
+                    "f0_timestep": float(ds[0]["f0_timestep"])
                 }
-            )
+    # Lone DS files.
+    for fp in tqdm(ds_folder.glob("*.ds"), ncols=80):
+        if not fp.with_suffix(".wav").exists():
+            with open(fp, "r", encoding="utf-8") as f:
+                ds = json.load(f)
+                for sub_ds in ds:
+                    item_name = fp.stem + "_" + uuid.uuid4().hex[:3]
+                    for _ in range(10):
+                        if item_name not in curves:
+                            break
+                        item_name = fp.stem + "_" + uuid.uuid4().hex[:3]
+                    else:
+                        raise ValueError(f"Failed to generate a unique item name for {fp.stem}")
+                    transcriptions.append(
+                        {
+                            "name": item_name,
+                            "ph_seq": sub_ds["ph_seq"],
+                            "ph_dur": " ".join(str(round(Decimal(d), 6)) for d in sub_ds["ph_dur"].split()),
+                            "ph_num": sub_ds["ph_num"],
+                            "note_seq": sub_ds["note_seq"],
+                            "note_dur": " ".join(str(round(Decimal(d), 6)) for d in sub_ds["note_dur"].split()),
+                            # "note_slur": sub_ds["note_slur"],
+                        }
+                    )
+                    curves[item_name] = {
+                        "f0_seq": " ".join(str(round(Decimal(d), 1)) for d in sub_ds["f0_seq"].split()),
+                        "f0_timestep": float(sub_ds["f0_timestep"])
+                    }
     with open(transcription_file, "w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(
             f,
@@ -230,6 +280,8 @@ def ds2csv(ds_folder, transcription_file, overwrite):
         )
         writer.writeheader()
         writer.writerows(transcriptions)
+    with open(curve_file, "w", encoding="utf-8") as f:
+        json.dump(curves, f, ensure_ascii=False, indent=4)
 
 
 cli.add_command(csv2ds)

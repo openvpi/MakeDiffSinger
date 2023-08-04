@@ -11,12 +11,14 @@ from textgrid import TextGrid
 
 
 @click.command(help='Collect phoneme alignments into transcriptions.csv')
-@click.option('--wavs', help='Path to the segments directory')
-@click.option('--tg', help='Path to the final TextGrids directory')
-@click.option('--dataset', help='Path to transcriptions.csv')
+@click.option('--wavs', required=True, help='Path to the segments directory')
+@click.option('--tg', required=True, help='Path to the final TextGrids directory')
+@click.option('--dataset', required=True, help='Path to transcriptions.csv')
 @click.option('--skip_silence_insertion', is_flag=True, show_default=True,
               help='Do not insert silence around segments')
-def build_dataset(wavs, tg, dataset, skip_silence_insertion):
+@click.option('--wav_subtype', default="PCM_16", show_default=True,
+              help='WAV subtype')
+def build_dataset(wavs, tg, dataset, skip_silence_insertion, wav_subtype):
     wavs = pathlib.Path(wavs)
     tg_dir = pathlib.Path(tg)
     del tg
@@ -55,7 +57,7 @@ def build_dataset(wavs, tg, dataset, skip_silence_insertion):
                     ph_dur.append(len_sil / samplerate)
         ph_seq = ' '.join(ph_seq)
         ph_dur = ' '.join([str(round(d, 6)) for d in ph_dur])
-        soundfile.write(dataset / 'wavs' / wavfile.name, y, samplerate)
+        soundfile.write(dataset / 'wavs' / wavfile.name, y, samplerate, subtype=wav_subtype)
         transcriptions.append({'name': wavfile.stem, 'ph_seq': ph_seq, 'ph_dur': ph_dur})
 
     with open(dataset / 'transcriptions.csv', 'w', encoding='utf8', newline='') as f:

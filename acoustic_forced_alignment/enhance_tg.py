@@ -1,4 +1,5 @@
 import pathlib
+from collections import defaultdict
 
 import click
 import librosa
@@ -7,6 +8,38 @@ import parselmouth as pm
 import textgrid as tg
 import tqdm
 
+
+# Given a list of words and a list of phones, regroup the phones that match the words.
+# Return a list of lists of phones.
+# Example: ['ge', 'chang'], ['g', 'e', 'ch', 'ang'] -> [['g', 'e'], ['ch', 'ang']]
+def reconstruct_word_phone(dictionary, words_tier, phones_tier):
+    words = [word.mark for word in words_tier if word.mark is not None and word.mark != '']
+    phones = [ph.mark for ph in phones_tier if ph.mark is not None and ph.mark != '']
+    def helper(i, j, tmp):
+        if i >= len(words):
+            return True
+        candidates = dictionary[words[i]]
+        for cand in candidates:
+            tj = j
+            correct = True
+            for ph in cand:
+                if phones[tj] != ph:
+                    correct = False
+                    break
+                tj += 1
+            if correct:
+                tmp.append(cand)
+                next_result = helper(i + 1, j + len(cand), tmp)
+                if next_result:
+                    return next_result
+                else:
+                    tmp.pop(-1)
+        return False
+    ret = []
+    result = helper(0, 0, ret)
+    if not result:
+        raise Exception("Cannot match\n" + str(words) + "\n" + str(phones))
+    return ret
 
 @click.command(help='Enhance and finish the TextGrids')
 @click.option('--wavs', required=True, help='Path to the segments directory')
@@ -44,11 +77,11 @@ def enhance_tg(
 
     with open(dict_path, 'r', encoding='utf8') as f:
         rules = [ln.strip().split('\t') for ln in f.readlines()]
-    dictionary = {}
+    dictionary = defaultdict(list)
     phoneme_set = set()
     for r in rules:
-        phonemes = r[1].split()
-        dictionary[r[0]] = phonemes
+        phonemes = r[-1].split()
+        dictionary[r[0]].append(phonemes)
         phoneme_set.update(phonemes)
 
     filelist = list(wavs.glob('*.wav'))
@@ -75,14 +108,22 @@ def enhance_tg(
         hop_size = int(time_step * sr)
         spectral_centroid = librosa.feature.spectral_centroid(y=y, sr=sr, n_fft=2048, hop_length=hop_size).squeeze(0)
 
+        try:
+            word_phone_map = reconstruct_word_phone(dictionary, words, phones)
+        except Exception as e:
+            raise Exception(f'Error in {wavfile}: {e}')
+
         # Fix long utterances
-        i = j = 0
+        i = j = word_i = 0
         while i < len(words):
             word = words[i]
             phone = phones[j]
             if word.mark is not None and word.mark != '':
                 i += 1
-                j += len(dictionary[word.mark])
+                j += len(word_phone_map[word_i])
+                # preserve both word and phoneme groups
+                word.mark = word.mark + ':' + '_'.join(word_phone_map[word_i])
+                word_i += 1
                 continue
             if i == 0:
                 i += 1
@@ -103,13 +144,14 @@ def enhance_tg(
             j += 1
 
         # Detect aspiration
-        i = j = 0
+        i = j = word_i = 0
         while i < len(words):
             word = words[i]
             phone = phones[j]
             if word.mark is not None and word.mark != '':
                 i += 1
-                j += len(dictionary[word.mark])
+                j += len(word_phone_map[word_i])
+                word_i += 1
                 continue
             if word.maxTime - word.minTime < br_len:
                 i += 1
@@ -172,13 +214,15 @@ def enhance_tg(
                 j += 1
 
         # Remove short spaces
-        i = j = 0
+        i = j = word_i = 0
         while i < len(words):
             word = words[i]
             phone = phones[j]
             if word.mark is not None and word.mark != '':
                 i += 1
-                j += (1 if word.mark == 'AP' else len(dictionary[word.mark]))
+                j += (1 if word.mark == 'AP' else len(word_phone_map[word_i]))
+                if word.mark != 'AP' and word.mark != 'SP':
+                    word_i += 1
                 continue
             if word.maxTime - word.minTime >= min_space:
                 word.mark = 'SP'
