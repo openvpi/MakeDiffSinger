@@ -93,6 +93,7 @@ def select_test_set(config, rel_path, _min, _max, per_speaker):
         test_prefixes += sorted(random.sample(training_cases[i], count))
     if not hparams['test_prefixes'] or click.confirm('Overwrite existing test prefixes?', abort=False):
         hparams['test_prefixes'] = test_prefixes
+        hparams['num_valid_plots'] = len(test_prefixes)
         with open(config, 'w', encoding='utf8') as f:
             yaml.dump(hparams, f, sort_keys=False)
         print('Test prefixes saved.')
