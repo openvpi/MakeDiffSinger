@@ -221,13 +221,9 @@ def ds2csv(ds_folder, transcription_file, curve_file, overwrite):
         if fp.with_suffix(".wav").exists():
             with open(fp, "r", encoding="utf-8") as f:
                 ds = json.load(f)
-            if not isinstance(ds, list):
-                ds = [ds]
-            for idx, seg in enumerate(ds):
-                name = fp.stem if len(ds) == 0 else f'{fp.stem}#{idx}'
                 transcriptions.append(
                     {
-                        "name": name,
+                        "name": fp.stem,
                         "ph_seq": ds[0]["ph_seq"],
                         "ph_dur": " ".join(str(round(Decimal(d), 6)) for d in ds[0]["ph_dur"].split()),
                         "ph_num": ds[0]["ph_num"],
@@ -236,8 +232,8 @@ def ds2csv(ds_folder, transcription_file, curve_file, overwrite):
                         # "note_slur": ds[0]["note_slur"],
                     }
                 )
-                assert name not in curves, f"{name} already exists in curves."
-                curves[name] = {
+                assert fp.stem not in curves, f"{fp.stem} already exists in curves."
+                curves[fp.stem] = {
                     "f0_seq": " ".join(str(round(Decimal(d), 1)) for d in ds[0]["f0_seq"].split()),
                     "f0_timestep": float(ds[0]["f0_timestep"])
                 }
@@ -246,14 +242,10 @@ def ds2csv(ds_folder, transcription_file, curve_file, overwrite):
         if not fp.with_suffix(".wav").exists():
             with open(fp, "r", encoding="utf-8") as f:
                 ds = json.load(f)
-                for sub_ds in ds:
-                    item_name = fp.stem + "_" + uuid.uuid4().hex[:3]
-                    for _ in range(10):
-                        if item_name not in curves:
-                            break
-                        item_name = fp.stem + "_" + uuid.uuid4().hex[:3]
-                    else:
-                        raise ValueError(f"Failed to generate a unique item name for {fp.stem}")
+                for idx, sub_ds in enumerate(ds):
+                    item_name = f"{fp.stem}#{idx}"
+                    if item_name in curves:
+                        raise ValueError(f"{item_name} already exists.")
                     transcriptions.append(
                         {
                             "name": item_name,
