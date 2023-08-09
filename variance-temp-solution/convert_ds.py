@@ -221,9 +221,13 @@ def ds2csv(ds_folder, transcription_file, curve_file, overwrite):
         if fp.with_suffix(".wav").exists():
             with open(fp, "r", encoding="utf-8") as f:
                 ds = json.load(f)
+            if not isinstance(ds, list):
+                ds = [ds]
+            for idx, seg in enumerate(ds):
+                name = fp.stem if len(ds) == 0 else f'{fp.stem}#{idx}'
                 transcriptions.append(
                     {
-                        "name": fp.stem,
+                        "name": name,
                         "ph_seq": ds[0]["ph_seq"],
                         "ph_dur": " ".join(str(round(Decimal(d), 6)) for d in ds[0]["ph_dur"].split()),
                         "ph_num": ds[0]["ph_num"],
@@ -232,8 +236,8 @@ def ds2csv(ds_folder, transcription_file, curve_file, overwrite):
                         # "note_slur": ds[0]["note_slur"],
                     }
                 )
-                assert fp.stem not in curves, f"{fp.stem} already exists in curves."
-                curves[fp.stem] = {
+                assert name not in curves, f"{name} already exists in curves."
+                curves[name] = {
                     "f0_seq": " ".join(str(round(Decimal(d), 1)) for d in ds[0]["f0_seq"].split()),
                     "f0_timestep": float(ds[0]["f0_timestep"])
                 }
