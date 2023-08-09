@@ -242,14 +242,10 @@ def ds2csv(ds_folder, transcription_file, curve_file, overwrite):
         if not fp.with_suffix(".wav").exists():
             with open(fp, "r", encoding="utf-8") as f:
                 ds = json.load(f)
-                for sub_ds in ds:
-                    item_name = fp.stem + "_" + uuid.uuid4().hex[:3]
-                    for _ in range(10):
-                        if item_name not in curves:
-                            break
-                        item_name = fp.stem + "_" + uuid.uuid4().hex[:3]
-                    else:
-                        raise ValueError(f"Failed to generate a unique item name for {fp.stem}")
+                for idx, sub_ds in enumerate(ds):
+                    item_name = f"{fp.stem}#{idx}"
+                    if item_name in curves:
+                        raise ValueError(f"{item_name} already exists.")
                     transcriptions.append(
                         {
                             "name": item_name,
