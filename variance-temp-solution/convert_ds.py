@@ -3,7 +3,6 @@ import json
 import pathlib
 from decimal import Decimal
 from math import isclose
-import uuid
 
 import click
 import librosa
@@ -243,7 +242,7 @@ def ds2csv(ds_folder, transcription_file, curve_file, overwrite):
             with open(fp, "r", encoding="utf-8") as f:
                 ds = json.load(f)
                 for idx, sub_ds in enumerate(ds):
-                    item_name = f"{fp.stem}#{idx}"
+                    item_name = f"{fp.stem}#{idx}" if len(ds) > 1 else fp.stem
                     if item_name in curves:
                         raise ValueError(f"{item_name} already exists.")
                     transcriptions.append(
