@@ -13,7 +13,7 @@ from textgrid import TextGrid
 @click.command(help='Collect phoneme alignments into transcriptions.csv')
 @click.option('--wavs', required=True, help='Path to the segments directory')
 @click.option('--tg', required=True, help='Path to the final TextGrids directory')
-@click.option('--dataset', required=True, help='Path to transcriptions.csv')
+@click.option('--dataset', required=True, help='Path to dataset directory')
 @click.option('--skip_silence_insertion', is_flag=True, show_default=True,
               help='Do not insert silence around segments')
 @click.option('--wav_subtype', default="PCM_16", show_default=True,
