@@ -11,7 +11,7 @@ from typing import List, Tuple
 @click.argument('json_dir', metavar='JSONS')
 @click.argument('csv_file', metavar='TRANSCRIPTIONS')
 @click.option('--key', type=int, default=0, show_default=True,
-                metavar='SEMITONES', help='Key transition')
+              metavar='SEMITONES', help='Key transition')
 def extract_midi(json_dir, csv_file, key):
     json_dir = pathlib.Path(json_dir).resolve()
     assert json_dir.exists(), 'The json directory does not exist.'
@@ -32,7 +32,7 @@ def extract_midi(json_dir, csv_file, key):
         with open(json_file, 'r', encoding='utf8') as f:
             json_obj: dict = json.load(f)
         assert len(json_obj['SongTempoList']) == 1, \
-            f'[{json_file.name}] ERROR: there must be one and only one single tempo in the project.'
+            f'[ERROR] {json_file.name}: there must be one and only one single tempo in the project.'
 
         tempo = json_obj['SongTempoList'][0]['BPM']
         midi_seq: list = json_obj['TrackList'][0]['NoteList']
