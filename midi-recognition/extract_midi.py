@@ -4,12 +4,15 @@ import pathlib
 
 import click
 import librosa
+from typing import List, Tuple
 
 
 @click.command(help='Extract MIDI sequences from OpenSVIP json files and add them into transcriptions.csv')
 @click.argument('json_dir', metavar='JSONS')
 @click.argument('csv_file', metavar='TRANSCRIPTIONS')
-def extract_midi(json_dir, csv_file):
+@click.option('--key', type=int, default=0, show_default=True,
+                metavar='SEMITONES', help='Key transition')
+def extract_midi(json_dir, csv_file, key):
     json_dir = pathlib.Path(json_dir).resolve()
     assert json_dir.exists(), 'The json directory does not exist.'
     tags_file = json_dir / 'tags.json'
@@ -33,7 +36,7 @@ def extract_midi(json_dir, csv_file):
 
         tempo = json_obj['SongTempoList'][0]['BPM']
         midi_seq: list = json_obj['TrackList'][0]['NoteList']
-        note_seq: list[tuple[str, float]] = []  # (note, duration)
+        note_seq: List[Tuple[str, float]] = []  # (note, duration)
         prev_pos: int = 0  # in ticks
         for i, midi in enumerate(midi_seq):
             if prev_pos < midi['StartPos']:
@@ -41,7 +44,7 @@ def extract_midi(json_dir, csv_file):
                     ('rest', (midi['StartPos'] - prev_pos) / 8 / tempo)
                 )
             note_seq.append(
-                (librosa.midi_to_note(midi['KeyNumber'], unicode=False), midi['Length'] / 8 / tempo)
+                (librosa.midi_to_note(midi['KeyNumber'] + key, unicode=False), midi['Length'] / 8 / tempo)
             )
             prev_pos = midi['StartPos'] + midi['Length']
         remain_secs = prev_pos / 8 / tempo - sum(t['duration'] for t in tags[json_file.stem])
@@ -60,7 +63,7 @@ def extract_midi(json_dir, csv_file):
 
     # Split note sequence and add into transcriptions
     for merged_name, note_seq in note_seq_map.items():
-        note_seq: tuple[str, float]
+        note_seq: Tuple[str, float]
         idx = 0
         offset = 0.
         cur_note_secs = 0.
