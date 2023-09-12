@@ -206,12 +206,12 @@ def csv2ds(transcription_file, wavs_folder, tolerance, hop_size, sample_rate, pe
 )
 def ds2csv(ds_folder, transcription_file, curve_file, overwrite):
     """Convert DS files to a transcription file"""
-    if curve_file is None:
-        curve_file = transcription_file.parent / "curves.json"
-    else:
-        curve_file = pathlib.Path(curve_file)
-    if not overwrite and (transcription_file.exists() or curve_file.exists()):
-        raise FileExistsError(f"{transcription_file} or {curve_file} already exist.")
+    # if curve_file is None:
+    #     curve_file = transcription_file.parent / "curves.json"
+    # else:
+    #     curve_file = pathlib.Path(curve_file)
+    if not overwrite and transcription_file.exists():
+        raise FileExistsError(f"{transcription_file} already exist.")
 
     transcriptions = []
     curves = {}
@@ -275,8 +275,8 @@ def ds2csv(ds_folder, transcription_file, curve_file, overwrite):
         )
         writer.writeheader()
         writer.writerows(transcriptions)
-    with open(curve_file, "w", encoding="utf-8") as f:
-        json.dump(curves, f, ensure_ascii=False, indent=4)
+    # with open(curve_file, "w", encoding="utf-8") as f:
+    #     json.dump(curves, f, ensure_ascii=False, indent=4)
 
 
 cli.add_command(csv2ds)
