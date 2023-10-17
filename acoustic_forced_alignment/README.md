@@ -35,7 +35,7 @@ pip install -r requirements.txt  # install other requirements
 
 ### 2.1 Audio slicing
 
-The raw data must be sliced into segments of about 5-15 seconds. We recommend using [audio-slicer](https://github.com/flutydeer/audio-slicer), a simple GUI application that can automatically slice audio files via silence detection.
+The raw data must be sliced into segments of about 5-15 seconds. We recommend using [AudioSlicer](../README.md#essential-tools-to-process-and-label-your-datasets), a simple GUI application that can automatically slice audio files via silence detection.
 
 Run the following command to validate your segment lengths and count the total length of your sliced segments:
 
@@ -49,7 +49,7 @@ All segments should have their transcriptions (or lyrics) annotated. See [assets
 
 Each segment should have one annotation file with the same filename as it and `.lab` extension, and placed in the same directory. In the annotation file, you should write all syllables sung or spoken in this segment. Syllables should be split by space, and only syllables that appears in the dictionary are allowed. In addition, all phonemes in the dictionary should be covered in the annotations. Please note that `SP`, `AP` and `<PAD>` should not be included in the labels although they are in your final phoneme set.
 
-We developed [MinLabel](*https://github.com/SineStriker/qsynthesis-revenge/tree/main/src/Test/MinLabel*), a simple yet efficient tool to help finishing this step. You can download the binary executable for Windows [here](https://huggingface.co/datasets/fox7005/tool/resolve/main/MinLabel%200.0.1.6.zip).
+We developed [MinLabel](../README.md#essential-tools-to-process-and-label-your-datasets), a simple yet efficient tool to help finishing this step.
 
 Once you finish labeling, run the following command to validate your labels:
 

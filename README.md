@@ -24,3 +24,12 @@ For other useful pipelines and tools for making a dataset, welcome to raise issu
     - transcriptions.csv
 - ...
 
+## Essential tools to process and label your datasets
+
+Dataset tools now have their own repository: [dataset-tools](https://github.com/openvpi/dataset-tools).
+
+There are mainly 3 components:
+
+- AudioSlicer: Slice your recordings into short segments
+- MinLabel: Label *.lab files containing word transcriptions for acoustic model training.
+- SlurCutter: Edit MIDI sequence in *.ds files for variance model training.
