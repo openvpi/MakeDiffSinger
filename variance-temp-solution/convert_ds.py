@@ -54,15 +54,15 @@ def try_resolve_slur_by_slicing(ph_dur, ph_num, note_seq, note_dur, tol):
     while idx_word < len(word_pos):
         slur = False
         if note_pos[idx_note] > word_pos[idx_word] and not isclose(
-                note_pos[idx_note], word_pos[idx_word], abs_tol=tol
+            note_pos[idx_note], word_pos[idx_word], abs_tol=tol
         ):
             new_note_seq.append(note_seq[idx_note])
             new_note_dur.append(word_pos[idx_word])
             note_slur.append(1 if slur else 0)
         else:
             while idx_note < len(note_pos) and (
-                    note_pos[idx_note] < word_pos[idx_word]
-                    or isclose(note_pos[idx_note], word_pos[idx_word], abs_tol=tol)
+                note_pos[idx_note] < word_pos[idx_word]
+                or isclose(note_pos[idx_note], word_pos[idx_word], abs_tol=tol)
             ):
                 new_note_seq.append(note_seq[idx_note])
                 new_note_dur.append(note_pos[idx_note])
@@ -112,9 +112,24 @@ def cli():
     help="Tolerance for ph_dur/note_dur mismatch",
     metavar="FLOAT",
 )
-@click.option("--hop_size", "-h", type=int, default=512, help="Hop size for f0_seq", metavar="INT")
-@click.option("--sample_rate", "-s", type=int, default=44100, help="Sample rate of audio", metavar="INT")
-@click.option("--pe", type=str, default="parselmouth", help="Pitch extractor (parselmouth, rmvpe)", metavar="ALGORITHM")
+@click.option(
+    "--hop_size", "-h", type=int, default=512, help="Hop size for f0_seq", metavar="INT"
+)
+@click.option(
+    "--sample_rate",
+    "-s",
+    type=int,
+    default=44100,
+    help="Sample rate of audio",
+    metavar="INT",
+)
+@click.option(
+    "--pe",
+    type=str,
+    default="parselmouth",
+    help="Pitch extractor (parselmouth, rmvpe)",
+    metavar="ALGORITHM",
+)
 def csv2ds(transcription_file, wavs_folder, tolerance, hop_size, sample_rate, pe):
     """Convert a transcription file to DS file"""
     assert wavs_folder.is_dir(), "wavs folder not found."
@@ -129,12 +144,16 @@ def csv2ds(transcription_file, wavs_folder, tolerance, hop_size, sample_rate, pe
             ph_num = list(map(int, trans_line["ph_num"].strip().split()))
             note_seq = trans_line["note_seq"].strip().split()
             note_dur = list(map(Decimal, trans_line["note_dur"].strip().split()))
+            note_glide = trans_line["note_glide"].strip().split() if "note_glide" in trans_line else None
 
             assert wav_fn.is_file(), f"{item_name}.wav not found."
             assert len(ph_dur) == sum(ph_num), "ph_dur and ph_num mismatch."
             assert len(note_seq) == len(note_dur), "note_seq and note_dur should have the same length."
-            assert isclose(sum(ph_dur), sum(note_dur), abs_tol=tolerance), \
-                f"[{item_name}] ERROR: mismatch total duration: {sum(ph_dur) - sum(note_dur)}"
+            if note_glide:
+                assert len(note_glide) == len(note_seq), "note_glide and note_seq should have the same length."
+            assert isclose(
+                sum(ph_dur), sum(note_dur), abs_tol=tolerance
+            ), f"[{item_name}] ERROR: mismatch total duration: {sum(ph_dur) - sum(note_dur)}"
 
             # Resolve note_slur
             if "note_slur" in trans_line and trans_line["note_slur"]:
@@ -168,6 +187,8 @@ def csv2ds(transcription_file, wavs_folder, tolerance, hop_size, sample_rate, pe
                     "f0_timestep": str(f0_timestep),
                 }
             ]
+            if note_glide:
+                ds_content[0]["note_glide"] = " ".join(note_glide)
             out_ds[ds_fn] = ds_content
             if ds_fn.exists():
                 out_exists.append(ds_fn)
@@ -190,13 +211,6 @@ def csv2ds(transcription_file, wavs_folder, tolerance, hop_size, sample_rate, pe
     type=click.Path(file_okay=True, dir_okay=False, resolve_path=True, path_type=pathlib.Path),
     metavar="TRANSCRIPTIONS",
 )
-@click.argument(
-    "curve_file",
-    type=str,
-    required=False,
-    default=None,
-    metavar="CURVES",
-)
 @click.option(
     "--overwrite",
     "-f",
@@ -204,17 +218,13 @@ def csv2ds(transcription_file, wavs_folder, tolerance, hop_size, sample_rate, pe
     default=False,
     help="Overwrite existing transcription file",
 )
-def ds2csv(ds_folder, transcription_file, curve_file, overwrite):
+def ds2csv(ds_folder, transcription_file, overwrite):
     """Convert DS files to a transcription file"""
-    # if curve_file is None:
-    #     curve_file = transcription_file.parent / "curves.json"
-    # else:
-    #     curve_file = pathlib.Path(curve_file)
     if not overwrite and transcription_file.exists():
         raise FileExistsError(f"{transcription_file} already exist.")
 
     transcriptions = []
-    curves = {}
+    any_with_glide = False
     # records that have corresponding wav files, assuming it's midi annotation
     for fp in tqdm(ds_folder.glob("*.ds"), ncols=80):
         if fp.with_suffix(".wav").exists():
@@ -231,11 +241,9 @@ def ds2csv(ds_folder, transcription_file, curve_file, overwrite):
                         # "note_slur": ds[0]["note_slur"],
                     }
                 )
-                assert fp.stem not in curves, f"{fp.stem} already exists in curves."
-                curves[fp.stem] = {
-                    "f0_seq": " ".join(str(round(Decimal(d), 1)) for d in ds[0]["f0_seq"].split()),
-                    "f0_timestep": float(ds[0]["f0_timestep"])
-                }
+                if "note_glide" in ds[0]:
+                    any_with_glide = True
+                    transcriptions[-1]["note_glide"] = ds[0]["note_glide"]
     # Lone DS files.
     for fp in tqdm(ds_folder.glob("*.ds"), ncols=80):
         if not fp.with_suffix(".wav").exists():
@@ -243,8 +251,6 @@ def ds2csv(ds_folder, transcription_file, curve_file, overwrite):
                 ds = json.load(f)
                 for idx, sub_ds in enumerate(ds):
                     item_name = f"{fp.stem}#{idx}" if len(ds) > 1 else fp.stem
-                    if item_name in curves:
-                        raise ValueError(f"{item_name} already exists.")
                     transcriptions.append(
                         {
                             "name": item_name,
@@ -256,10 +262,13 @@ def ds2csv(ds_folder, transcription_file, curve_file, overwrite):
                             # "note_slur": sub_ds["note_slur"],
                         }
                     )
-                    curves[item_name] = {
-                        "f0_seq": " ".join(str(round(Decimal(d), 1)) for d in sub_ds["f0_seq"].split()),
-                        "f0_timestep": float(sub_ds["f0_timestep"])
-                    }
+                    if "note_glide" in sub_ds:
+                        any_with_glide = True
+                        transcriptions[-1]["note_glide"] = sub_ds["note_glide"]
+    if any_with_glide:
+        for row in transcriptions:
+            if "note_glide" not in row:
+                row["note_glide"] = " ".join(["none"] * len(row["note_seq"].split()))
     with open(transcription_file, "w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(
             f,
@@ -271,12 +280,10 @@ def ds2csv(ds_folder, transcription_file, curve_file, overwrite):
                 "note_seq",
                 "note_dur",
                 # "note_slur",
-            ],
+            ] + (["note_glide"] if any_with_glide else []),
         )
         writer.writeheader()
         writer.writerows(transcriptions)
-    # with open(curve_file, "w", encoding="utf-8") as f:
-    #     json.dump(curves, f, ensure_ascii=False, indent=4)
 
 
 cli.add_command(csv2ds)
