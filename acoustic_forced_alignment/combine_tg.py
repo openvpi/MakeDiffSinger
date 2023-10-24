@@ -1,10 +1,10 @@
+import pathlib
 import re
+from typing import Dict, List
 
 import click
-import numpy
-import pathlib
-
 import librosa
+import numpy
 import soundfile
 import textgrid
 import tqdm
@@ -48,9 +48,14 @@ def combine_tg(wavs, tg, out, suffix, wav_subtype, overwrite):
     del tg
     combined_path_out = pathlib.Path(out)
     combined_path_out.mkdir(parents=True, exist_ok=True)
-    filelist = sorted(set(remove_suffix(f.stem, suffix) for f in tg_path_in.glob('*.TextGrid')))
-    for name in tqdm.tqdm(filelist):
-        idx = 0
+    filelist: Dict[str, List[pathlib.Path]] = {}
+    for tg_file in tg_path_in.glob('*.TextGrid'):
+        stem = remove_suffix(tg_file.stem, suffix)
+        if stem not in filelist:
+            filelist[stem] = [tg_file]
+        else:
+            filelist[stem].append(tg_file)
+    for name, files in tqdm.tqdm(sorted(filelist.items(), key=lambda kv: kv[0])):
         wav_segments = []
         tg = textgrid.TextGrid()
         sentences_tier = textgrid.IntervalTier(name='sentences')
@@ -58,18 +63,18 @@ def combine_tg(wavs, tg, out, suffix, wav_subtype, overwrite):
         phones_tier = textgrid.IntervalTier(name='phones')
         sentence_start = 0.
         sr = None
-        while (wav_path_in / f'{name}_{idx}').with_suffix('.wav').exists():
-            wav_file = (wav_path_in / f'{name}_{idx}').with_suffix('.wav')
+        for tg_file in files:
+            wav_file = (wav_path_in / tg_file.name).with_suffix('.wav')
             waveform, sr_ = librosa.load(wav_file, sr=None)
             if sr is None:
                 sr = sr_
             else:
-                assert sr_ == sr, f'Cannot combine \'{name}_{idx}\': incompatible samplerate ({sr_} != {sr})'
+                assert sr_ == sr, f'Cannot combine \'{tg_file.stem}\': incompatible samplerate ({sr_} != {sr})'
             sentence_end = waveform.shape[0] / sr + sentence_start
             wav_segments.append(waveform)
             sentences_tier.add(minTime=sentence_start, maxTime=sentence_end, mark=wav_file.stem)
             sentence_tg = textgrid.TextGrid()
-            sentence_tg.read(tg_path_in / wav_file.with_suffix('.TextGrid').name)
+            sentence_tg.read(tg_file)
             start = sentence_start
             for j, word in enumerate(sentence_tg[0]):
                 if j == len(sentence_tg[0]) - 1:
@@ -86,7 +91,6 @@ def combine_tg(wavs, tg, out, suffix, wav_subtype, overwrite):
                     end = start + phone.duration()
                 phones_tier.add(minTime=start, maxTime=end, mark=phone.mark)
                 start = end
-            idx += 1
             sentence_start = sentence_end
         tg.append(sentences_tier)
         tg.append(words_tier)
