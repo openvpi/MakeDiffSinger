@@ -128,7 +128,11 @@ python summary_pitch.py --wavs path/to/your/segments/ --tg path/to/final/textgri
 
 With steps above, the TextGrids we get contains 2 tiers: the words and the phones. Manual refinement to your TextGrids may take lots of effort but will boost the performance and stability of your model.
 
-This section is a recommended (but not required) way to refine your TextGrids manually.
+This section is a recommended (but not required) way to refine your TextGrids manually. Before you start, an additional dependency to achieve natural sorting needs to be installed:
+
+```bash
+pip install natsort
+```
 
 #### 3.4.1 Combine the recordings and TextGrids
 

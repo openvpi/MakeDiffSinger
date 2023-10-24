@@ -4,6 +4,7 @@ from typing import Dict, List
 
 import click
 import librosa
+import natsort
 import numpy
 import soundfile
 import textgrid
@@ -63,7 +64,7 @@ def combine_tg(wavs, tg, out, suffix, wav_subtype, overwrite):
         phones_tier = textgrid.IntervalTier(name='phones')
         sentence_start = 0.
         sr = None
-        for tg_file in files:
+        for tg_file in natsort.natsorted(files):
             wav_file = (wav_path_in / tg_file.name).with_suffix('.wav')
             waveform, sr_ = librosa.load(wav_file, sr=None)
             if sr is None:
