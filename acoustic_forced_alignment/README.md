@@ -184,7 +184,7 @@ Run:
 python build_dataset.py --wavs path/to/your/segments/ --tg path/to/final/textgrids/ --dataset path/to/your/dataset/
 ```
 
-NOTE 1: This will insert random silence parts around each segments by default for better `SP` stability. If you do not need these silence parts, please use the `--skip_silence_insertion` option.
+NOTE 1: This will insert random silence parts around each segments by default for better `SP` stability. If you do not need these silence parts, for example, if your TextGrids have been manually refined, please use the `--skip_silence_insertion` option.
 
 NOTE 2: `--wav_subtype` can be used to specify the bit-depth of the saved WAV files. Options are `PCM_16` (default), `PCM_24`, `PCM_32`, `FLOAT`, and `DOUBLE`.
 
