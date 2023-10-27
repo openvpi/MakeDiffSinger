@@ -66,7 +66,7 @@ A universal monosyllabic phoneme system has "C(m)-V-C(n)" (m,n >= 0) phoneme pat
 
 We recommand this step be manually performed because word divisions cannot be infered from phoneme sequences in these phoneme systems.
 
-> After finishing this step, the transcriptions.csv file can be directly used to train the phoneme duration predictor (it only needs rough MIDI sequences extracted from wave files). If you want to train a pitch predictor, you must finish the remaining steps as follows, otherwise the predictions will not be accurate.
+> After finishing this step, the transcriptions.csv file can be directly used to train the phoneme duration predictor. If you want to train a pitch predictor, you must finish the remaining steps as follows.
 >
 
 ## 4. Estimate note values
@@ -89,6 +89,10 @@ Run:
 ```bash
 python estimate_midi.py path/to/your/transcriptions.csv path/to/your/wavs
 ```
+
+> **IMPORTANT**
+> 
+> This step only estimates the rough MIDI value for each word. You have to refine the MIDI sequences, otherwise the pitch predictor will not be accurate.
 
 ## 5. Refine MIDI sequences
 
