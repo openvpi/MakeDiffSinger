@@ -17,6 +17,7 @@ def align_tg_words(tg, dictionary, out, overwrite):
     tg_path_in = pathlib.Path(tg)
     dict_path = pathlib.Path(dictionary)
     tg_path_out = pathlib.Path(out) if out is not None else tg_path_in
+    tg_path_out.mkdir(parents=True, exist_ok=True)
 
     with open(dict_path, 'r', encoding='utf8') as f:
         rules = [ln.strip().split('\t') for ln in f.readlines()]
@@ -58,7 +59,7 @@ def align_tg_words(tg, dictionary, out, overwrite):
         tg_file_out = tg_path_out / tgfile.name
         if tg_file_out.exists() and not overwrite:
             raise FileExistsError(str(tg_file_out))
-        tg.write(tgfile)
+        tg.write(tg_file_out)
 
 
 if __name__ == '__main__':
