@@ -45,9 +45,25 @@ def align_tg_words(tg, dictionary, out, overwrite):
         new_words_tier = textgrid.IntervalTier(name='words')
         word_seq = [i.mark for i in old_words_tier]
         word_div = [len(dictionary[w]) for w in word_seq]
-        ph_dur = [i.maxTime - i.minTime for i in phones_tier]
-        assert sum(word_div) == len(ph_dur), tgfile
-        assert all(i.mark in phoneme_set for i in phones_tier), tgfile
+        ph_seq = [i.mark for i in phones_tier]
+        ph_dur = [i.duration() for i in phones_tier]
+        idx = 0
+        for i, word in enumerate(word_seq):
+            word_ph_seq = dictionary[word]
+            if word_ph_seq != ph_seq[idx: idx + len(word_ph_seq)]:
+                print(
+                    f'Warning: word and phones mismatch in \'{tgfile}\' '
+                    f'at word {i}, phone {idx}: {word} => {ph_seq[idx: idx + len(word_ph_seq)]}'
+                )
+            idx += len(word_ph_seq)
+        for i, phone in enumerate(ph_seq):
+            if phone not in phoneme_set:
+                raise ValueError(f'Error: invalid phone in \'{tgfile}\' at {i}: {phone}')
+        if sum(word_div) != len(ph_dur):
+            raise ValueError(
+                f'Error: word_div does not sum to number of phones in \'{tgfile}\'. '
+                f'Check the warnings above for more detailed mismatching positions.'
+            )
         start = 0.
         idx = 0
         for j in range(len(word_seq)):
