@@ -143,6 +143,7 @@ Now the transcriptions.csv can be used for all functionalities of DiffSinger tra
 convert_ds.py and estimate_midi.py supports the state-of-the-art RMVPE pitch extraction algorithm. To use it:
 
 - Install PyTorch via [official guidance](https://pytorch.org/get-started/locally/).
+- Get RMVPE pretrained model [here](https://github.com/yxlllc/RMVPE/releases).
 - Put the RMVPE model.pt in `variance-temp-solution/assets/rmvpe/`.
 - Use `--pe rmvpe` when running `python convert_ds.py csv2ds` or `python estimate_midi.py`.
 
