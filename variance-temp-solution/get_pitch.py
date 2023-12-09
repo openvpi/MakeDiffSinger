@@ -46,16 +46,15 @@ def resample_align_curve(points: np.ndarray, original_timestep: float, target_ti
 
 def get_pitch_parselmouth(wav_data, hop_size, audio_sample_rate, interp_uv=True):
     time_step = hop_size / audio_sample_rate
-    f0_min = 65
-    f0_max = 800
+    f0_min = 65.
+    f0_max = 1100.
 
     # noinspection PyArgumentList
     f0 = (
         parselmouth.Sound(wav_data, sampling_frequency=audio_sample_rate)
         .to_pitch_ac(
             time_step=time_step, voicing_threshold=0.6, pitch_floor=f0_min, pitch_ceiling=f0_max
-        )
-        .selected_array["frequency"]
+        ).selected_array["frequency"]
     )
     uv = f0 == 0
     if interp_uv:
