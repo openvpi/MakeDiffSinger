@@ -56,6 +56,7 @@ chen	ch en
 cheng	ch eng
 cher	ch er
 chi	ch ir
+cho	ch o
 chong	ch ong
 chou	ch ou
 chu	ch u
@@ -69,6 +70,7 @@ chuo	ch uo
 chv	ch v
 chyi	ch i
 ci	c i0
+co	c o
 cong	c ong
 cou	c ou
 cu	c u
@@ -101,6 +103,7 @@ din	d in
 ding	d ing
 diong	d iong
 diu	d iu
+do	d o
 dong	d ong
 dou	d ou
 du	d u
@@ -170,6 +173,7 @@ gin	g in
 ging	g ing
 giong	g iong
 giu	g iu
+go	g o
 gong	g ong
 gou	g ou
 gu	g u
@@ -202,6 +206,7 @@ hin	h in
 hing	h ing
 hiong	h iong
 hiu	h iu
+ho	h o
 hong	h ong
 hou	h ou
 hu	h u
@@ -248,6 +253,7 @@ kin	k in
 king	k ing
 kiong	k iong
 kiu	k iu
+ko	k o
 kong	k ong
 kou	k ou
 ku	k u
@@ -345,6 +351,7 @@ nin	n in
 ning	n ing
 niong	n iong
 niu	n iu
+no	n o
 nong	n ong
 nou	n ou
 nu	n u
@@ -417,6 +424,7 @@ ren	r en
 reng	r eng
 rer	r er
 ri	r ir
+ro	r o
 rong	r ong
 rou	r ou
 ru	r u
@@ -450,6 +458,7 @@ shen	sh en
 sheng	sh eng
 sher	sh er
 shi	sh ir
+sho	sh o
 shong	sh ong
 shou	sh ou
 shu	sh u
@@ -463,6 +472,7 @@ shuo	sh uo
 shv	sh v
 shyi	sh i
 si	s i0
+so	s o
 song	s ong
 sou	s ou
 su	s u
@@ -494,6 +504,7 @@ tie	t ie
 tin	t in
 ting	t ing
 tiong	t iong
+to	t o
 tong	t ong
 tou	t ou
 tu	t u
@@ -575,6 +586,7 @@ zhen	zh en
 zheng	zh eng
 zher	zh er
 zhi	zh ir
+zho	zh o
 zhong	zh ong
 zhou	zh ou
 zhu	zh u
@@ -588,6 +600,7 @@ zhuo	zh uo
 zhv	zh v
 zhyi	zh i
 zi	z i0
+zo	z o
 zong	z ong
 zou	z ou
 zu	z u
