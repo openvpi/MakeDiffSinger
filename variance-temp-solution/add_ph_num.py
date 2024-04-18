@@ -71,7 +71,7 @@ def add_ph_num(
         item['ph_num'] = ' '.join(ph_num)
 
     with open(transcription, 'w', encoding='utf8', newline='') as f:
-        writer = csv.DictWriter(f, fieldnames=['name', 'ph_seq', 'ph_dur', 'ph_num'])
+        writer = csv.DictWriter(f, fieldnames=items[0].keys())
         writer.writeheader()
         writer.writerows(items)
 
