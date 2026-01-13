@@ -1,4 +1,5 @@
 import csv
+import json
 import pathlib
 from typing import List, TextIO
 
@@ -110,7 +111,6 @@ def replace_for_sequence(seq: list, src_dict: PhonemeDictionary, tgt_dict: Phone
                 seq[i:i + n] = tgt_dict.rules[word]
 
 
-
 @click.group(help="Migrate dictionary for dataset labels.")
 def cli():
     pass
@@ -200,6 +200,45 @@ def migrate_for_transcriptions_csv(
         writer = csv.DictWriter(f, fieldnames=fieldnames)
         writer.writeheader()
         writer.writerows(items)
+
+
+@cli.command(
+    name="ds",
+    help="Migrate dictionary for DS files"
+)
+@click.argument(
+    "ds_dir", type=click.Path(
+        exists=True, dir_okay=True, file_okay=False, readable=True, path_type=pathlib.Path
+    )
+)
+@shared_dict_options
+@shared_save_dir_option
+@shared_overwrite_file_option
+def migrate_for_ds_files(
+        ds_files: pathlib.Path,
+        source_dict: pathlib.Path,
+        target_dict: pathlib.Path,
+        save_path: pathlib.Path,
+        overwrite: bool = False,
+):
+    src_dict, tgt_dict, word_diff = load_and_validate_dictionaries(source_dict, target_dict)
+
+    for ds_file in ds_files.glob("*.ds"):
+        save_file = save_path / ds_file.name
+        if not overwrite and save_file.exists():
+            raise FileExistsError(f"File {save_file} already exists. Use --overwrite to overwrite it.")
+
+        with open(ds_file, "r", encoding="utf8") as f:
+            ds = json.load(f)
+            segments = ds if isinstance(ds, list) else [ds]
+            for segment in segments:
+                ph_seq = segment["ph_seq"].split()
+                new_ph_seq = ph_seq.copy()
+                replace_for_sequence(new_ph_seq, src_dict, tgt_dict, word_diff)
+                segment["ph_seq"] = " ".join(new_ph_seq)
+
+        with open(save_file, "w", encoding="utf8") as f:
+            json.dump(ds, f, ensure_ascii=False, indent=2)
 
 
 @cli.command(
