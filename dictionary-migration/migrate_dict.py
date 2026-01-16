@@ -136,6 +136,7 @@ def migrate_for_textgrids(
         save_path: pathlib.Path,
         overwrite: bool = False,
 ):
+    save_path.mkdir(parents=True, exist_ok=True)
     src_dict, tgt_dict, word_diff = load_and_validate_dictionaries(source_dict, target_dict)
 
     for tg_file in textgrids.glob("*.TextGrid"):
@@ -221,6 +222,7 @@ def migrate_for_ds_files(
         save_path: pathlib.Path,
         overwrite: bool = False,
 ):
+    save_path.mkdir(parents=True, exist_ok=True)
     src_dict, tgt_dict, word_diff = load_and_validate_dictionaries(source_dict, target_dict)
 
     for ds_file in ds_files.glob("*.ds"):
