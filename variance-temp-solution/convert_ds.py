@@ -117,10 +117,10 @@ def csv2ds(transcription_file, wavs_folder, tolerance, hop_size, sample_rate, pe
             item_name = trans_line["name"]
             wav_fn = wavs_folder / f"{item_name}.wav"
             ds_fn = wavs_folder / f"{item_name}.ds"
-            ph_dur = list(map(Decimal, trans_line["ph_dur"].strip().split()))
+            ph_dur = list(map(float, trans_line["ph_dur"].strip().split()))
             ph_num = list(map(int, trans_line["ph_num"].strip().split()))
             note_seq = trans_line["note_seq"].strip().split()
-            note_dur = list(map(Decimal, trans_line["note_dur"].strip().split()))
+            note_dur = list(map(float, trans_line["note_dur"].strip().split()))
             note_glide = trans_line["note_glide"].strip().split() if "note_glide" in trans_line else None
 
             assert wav_fn.is_file(), f"{item_name}.wav not found."
