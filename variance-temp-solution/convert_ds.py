@@ -3,6 +3,7 @@ import json
 import pathlib
 from decimal import Decimal
 from math import isclose
+from typing import Tuple, List
 
 import click
 import librosa
@@ -12,74 +13,50 @@ from tqdm import tqdm
 from get_pitch import get_pitch
 
 
-def try_resolve_note_slur_by_matching(ph_dur, ph_num, note_dur, tol):
-    if len(ph_num) > len(note_dur):
-        raise ValueError("ph_num should not be longer than note_dur.")
-    ph_num_cum = np.cumsum([0] + ph_num)
-    word_pos = np.cumsum([sum(ph_dur[l:r]) for l, r in zip(ph_num_cum[:-1], ph_num_cum[1:])])
-    note_pos = np.cumsum(note_dur)
-    new_note_dur = []
-
-    note_slur = []
-    idx_word, idx_note = 0, 0
-    slur = False
-    while idx_word < len(word_pos) and idx_note < len(note_pos):
-        if isclose(word_pos[idx_word], note_pos[idx_note], abs_tol=tol):
-            note_slur.append(1 if slur else 0)
-            new_note_dur.append(word_pos[idx_word])
-            idx_word += 1
-            idx_note += 1
-            slur = False
-        elif note_pos[idx_note] > word_pos[idx_word]:
-            raise ValueError("Cannot resolve note_slur by matching.")
-        elif note_pos[idx_note] <= word_pos[idx_word]:
-            note_slur.append(1 if slur else 0)
-            new_note_dur.append(note_pos[idx_note])
-            idx_note += 1
-            slur = True
-    ret_note_dur = np.diff(new_note_dur, prepend=Decimal("0.0")).tolist()
-    assert len(ret_note_dur) == len(note_slur)
-    return ret_note_dur, note_slur
-
-
-def try_resolve_slur_by_slicing(ph_dur, ph_num, note_seq, note_dur, tol):
-    ph_num_cum = np.cumsum([0] + ph_num)
-    word_pos = np.cumsum([sum(ph_dur[l:r]) for l, r in zip(ph_num_cum[:-1], ph_num_cum[1:])])
-    note_pos = np.cumsum(note_dur)
+def align_notes_to_words(
+        ph_dur: List[float], ph_num: List[int], note_seq: List[str], note_dur: List[float], tol: float = 0.01
+) -> Tuple[List[str], List[float], List[int]]:
+    idx = 0
+    word_dur = []
+    for num in ph_num:
+        word_dur.append(sum(ph_dur[idx:idx + num]))
+        idx += num
+    word_start = np.cumsum([0.0] + word_dur[:-1])#.tolist()
+    word_end = np.cumsum(word_dur)#.tolist()
+    note_start = np.cumsum([0.0] + note_dur[:-1])#.tolist()
+    note_end = np.cumsum(note_dur)#.tolist()
     new_note_seq = []
     new_note_dur = []
-
     note_slur = []
-    idx_word, idx_note = 0, 0
-    while idx_word < len(word_pos):
-        slur = False
-        if note_pos[idx_note] > word_pos[idx_word] and not isclose(
-            note_pos[idx_note], word_pos[idx_word], abs_tol=tol
-        ):
-            new_note_seq.append(note_seq[idx_note])
-            new_note_dur.append(word_pos[idx_word])
-            note_slur.append(1 if slur else 0)
+    for word_idx in range(len(word_dur)):
+        # find the closest note start
+        note_start_idx = np.argmin(np.abs(note_start - word_start[word_idx]))
+        if word_start[word_idx] < note_start[note_start_idx] - tol:
+            note_start_idx -= 1
+        # find the closest note end
+        note_end_idx = np.argmin(np.abs(note_end - word_end[word_idx]))
+        if word_end[word_idx] > note_end[note_end_idx] + tol:
+            note_end_idx += 1
+        if note_start_idx == note_end_idx:
+            new_note_seq.append(note_seq[note_start_idx])
+            new_note_dur.append(word_dur[word_idx])
+            note_slur.append(0)
         else:
-            while idx_note < len(note_pos) and (
-                note_pos[idx_note] < word_pos[idx_word]
-                or isclose(note_pos[idx_note], word_pos[idx_word], abs_tol=tol)
-            ):
-                new_note_seq.append(note_seq[idx_note])
-                new_note_dur.append(note_pos[idx_note])
-                note_slur.append(1 if slur else 0)
-                slur = True
-                idx_note += 1
-            if new_note_dur[-1] < word_pos[idx_word]:
-                if isclose(new_note_dur[-1], word_pos[idx_word], abs_tol=tol):
-                    new_note_dur[-1] = word_pos[idx_word]
+            for note_idx in range(note_start_idx, note_end_idx + 1):
+                # adjust note start
+                if note_idx == note_start_idx:
+                    start = word_start[word_idx]
                 else:
-                    new_note_seq.append(note_seq[idx_note])
-                    new_note_dur.append(word_pos[idx_word])
-                    note_slur.append(1 if slur else 0)
-        idx_word += 1
-    ret_note_dur = np.diff(new_note_dur, prepend=Decimal("0.0")).tolist()
-    assert len(new_note_seq) == len(ret_note_dur) == len(note_slur)
-    return new_note_seq, ret_note_dur, note_slur
+                    start = note_start[note_idx]
+                # adjust note end
+                if note_idx == note_end_idx:
+                    end = word_end[word_idx]
+                else:
+                    end = note_end[note_idx]
+                new_note_seq.append(note_seq[note_idx])
+                new_note_dur.append(end - start)
+                note_slur.append(1 if note_idx > note_start_idx else 0)
+    return new_note_seq, new_note_dur, note_slur
 
 
 @click.group()
@@ -108,7 +85,7 @@ def cli():
     "--tolerance",
     "-t",
     type=float,
-    default=0.005,
+    default=0.01,
     help="Tolerance for ph_dur/note_dur mismatch",
     metavar="FLOAT",
 )
@@ -159,15 +136,9 @@ def csv2ds(transcription_file, wavs_folder, tolerance, hop_size, sample_rate, pe
             if "note_slur" in trans_line and trans_line["note_slur"]:
                 note_slur = list(map(int, trans_line["note_slur"].strip().split()))
             else:
-                try:
-                    note_dur, note_slur = try_resolve_note_slur_by_matching(
-                        ph_dur, ph_num, note_dur, tolerance
-                    )
-                except ValueError:
-                    # logging.warning(f"note_slur is not resolved by matching for {item_name}")
-                    note_seq, note_dur, note_slur = try_resolve_slur_by_slicing(
-                        ph_dur, ph_num, note_seq, note_dur, tolerance
-                    )
+                note_seq, note_dur, note_slur = align_notes_to_words(
+                    ph_dur, ph_num, note_seq, note_dur, tol=tolerance
+                )
             # Extract f0_seq
             wav, _ = librosa.load(wav_fn, sr=sample_rate, mono=True)
             # length = len(wav) + (win_size - hop_size) // 2 + (win_size - hop_size + 1) // 2
@@ -288,6 +259,7 @@ def ds2csv(ds_folder, transcription_file, overwrite):
 
 cli.add_command(csv2ds)
 cli.add_command(ds2csv)
+
 
 if __name__ == "__main__":
     cli()
