@@ -21,10 +21,10 @@ def align_notes_to_words(
     for num in ph_num:
         word_dur.append(sum(ph_dur[idx:idx + num]))
         idx += num
-    word_start = np.cumsum([0.0] + word_dur[:-1])#.tolist()
-    word_end = np.cumsum(word_dur)#.tolist()
-    note_start = np.cumsum([0.0] + note_dur[:-1])#.tolist()
-    note_end = np.cumsum(note_dur)#.tolist()
+    word_start = np.cumsum([0.0] + word_dur[:-1])
+    word_end = np.cumsum(word_dur)
+    note_start = np.cumsum([0.0] + note_dur[:-1])
+    note_end = np.cumsum(note_dur)
     new_note_seq = []
     new_note_dur = []
     note_slur = []
@@ -32,30 +32,34 @@ def align_notes_to_words(
         # find the closest note start
         note_start_idx = np.argmin(np.abs(note_start - word_start[word_idx]))
         if word_start[word_idx] < note_start[note_start_idx] - tol:
-            note_start_idx -= 1
+            note_start_idx = max(0, note_start_idx - 1)
         # find the closest note end
         note_end_idx = np.argmin(np.abs(note_end - word_end[word_idx]))
         if word_end[word_idx] > note_end[note_end_idx] + tol:
-            note_end_idx += 1
-        if note_start_idx == note_end_idx:
-            new_note_seq.append(note_seq[note_start_idx])
-            new_note_dur.append(word_dur[word_idx])
-            note_slur.append(0)
-        else:
-            for note_idx in range(note_start_idx, note_end_idx + 1):
-                # adjust note start
-                if note_idx == note_start_idx:
-                    start = word_start[word_idx]
-                else:
-                    start = note_start[note_idx]
-                # adjust note end
-                if note_idx == note_end_idx:
-                    end = word_end[word_idx]
-                else:
-                    end = note_end[note_idx]
-                new_note_seq.append(note_seq[note_idx])
-                new_note_dur.append(end - start)
-                note_slur.append(1 if note_idx > note_start_idx else 0)
+            note_end_idx = min(len(note_end) - 1, note_end_idx + 1)
+        # adjust note sequence and durations to fit the word duration
+        word_note_seq = []
+        word_note_dur = []
+        for note_idx in range(note_start_idx, note_end_idx + 1):
+            # adjust note start
+            if note_idx == note_start_idx:
+                start = word_start[word_idx]
+            else:
+                start = note_start[note_idx]
+            # adjust note end
+            if note_idx == note_end_idx:
+                end = word_end[word_idx]
+            else:
+                end = note_end[note_idx]
+            if word_note_seq and word_note_seq[-1] == note_seq[note_idx]:
+                # same note as previous, merge durations
+                word_note_dur[-1] += (end - start)
+            else:
+                word_note_seq.append(note_seq[note_idx])
+                word_note_dur.append(end - start)
+        new_note_seq.extend(word_note_seq)
+        new_note_dur.extend(word_note_dur)
+        note_slur.extend([0] + [1] * (len(word_note_seq) - 1))
     return new_note_seq, new_note_dur, note_slur
 
 
