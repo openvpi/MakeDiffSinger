@@ -6,18 +6,19 @@ Build accurate, informative and maintainable singing datasets in agentic or prog
 
 With [setup](#install) complete, use **Prompt** for an unfamiliar dataset or recordings with song-level lyrics. Use **Command** for clips with matching transcripts. Both examples deliver editable annotations and a quality overview in a fresh output directory. See the [full pipeline and its outputs](docs/workflow.md#full-pipeline).
 
+Replace angle-bracketed placeholders such as `<DATASET_DIR>` and `<DELIVERY_DIR>` with your own values. Run commands from the repository root.
+
 When supplying multiple dataset directories, each gets its own [delivery and quality ranking](docs/workflow.md#delivery-layout).
 
 <details name="full" open>
 <summary>Prompt</summary>
 
 ~~~text
-Use dataset-creator to annotate the Mandarin singing dataset in ./incoming.
+Annotate the singing dataset in <DATASET_DIR> and save the results under <DELIVERY_DIR>.
 
 - Recut the original recordings.
-- Reuse only the written lyrics. Look up the original lyrics when they are missing.
-- Use CPU only. Proceed even if some clips are unusually long.
-- Deliver editable annotations and a quality overview under ./outputs/run.
+- Reuse only the written lyrics from the source annotations.
+- Exclude clips with poor annotation quality.
 ~~~
 
 </details>
@@ -26,7 +27,7 @@ Use dataset-creator to annotate the Mandarin singing dataset in ./incoming.
 <summary>Command</summary>
 
 ~~~bash
-python scripts/run_pipeline.py clips --language zh --resources configs/resources.local.json --output outputs/run
+python scripts/run_pipeline.py "<PAIRED_CLIPS_DIR>" --language zh --resources "<RESOURCES_JSON>" --output "<DELIVERY_DIR>"
 ~~~
 
 </details>
@@ -37,13 +38,13 @@ Use `dataset-creator` from `.agents/skills`. If your agent needs an explicit ent
 
 For command-line setup, use Python 3.12 and one environment for both inference backends. Run the first block to initialize the submodules and create the environment. Activate it and install a PyTorch build suitable for your hardware before running the second block. For inspection and conversion alone, omit the inference extra.
 
-For inference, copy [configs/resources.example.json](configs/resources.example.json) to `configs/resources.local.json` and set the model paths. Save a device in `local/agent-setup.json` or pass `--device` to the inference command. See [installation and resources](docs/installation.md).
+For inference, copy [configs/resources.example.json](configs/resources.example.json) to `configs/resources.local.json`, set the model paths, and use this file for `<RESOURCES_JSON>`. Save a device in `local/agent-setup.json` or pass `--device` to the inference command. See [installation and resources](docs/installation.md).
 
 <details name="install" open>
 <summary>Prompt</summary>
 
 ~~~text
-Set up this checkout in my Python environment named ENV_NAME for Mandarin annotation on my GPU. Save the working setup for later tasks.
+Set up my Python environment <ENV_NAME> for Mandarin annotation on my GPU.
 ~~~
 
 </details>
@@ -53,7 +54,7 @@ Set up this checkout in my Python environment named ENV_NAME for Mandarin annota
 
 ~~~bash
 git submodule update --init --recursive
-python -m venv .venv
+python -m venv "<VENV_DIR>"
 ~~~
 
 ~~~bash
@@ -70,7 +71,7 @@ Use the inventory to locate representative source files and verify their fields 
 <summary>Prompt</summary>
 
 ~~~text
-Inspect ./incoming. Tell me whether the audio is already sliced, which annotation fields we can reuse, and how the source is organized.
+Inspect <DATASET_DIR> and summarize what can be reused for annotation.
 ~~~
 
 </details>
@@ -79,7 +80,7 @@ Inspect ./incoming. Tell me whether the audio is already sliced, which annotatio
 <summary>Command</summary>
 
 ~~~bash
-python scripts/prepare/inspect_sources.py incoming --output work/inventory.json
+python scripts/prepare/inspect_sources.py "<DATASET_DIR>" --output "<WORK_DIR>/inventory.json"
 ~~~
 
 </details>
@@ -92,7 +93,7 @@ Audio stages require mono input. Distinct stereo regions become independent chan
 <summary>Prompt</summary>
 
 ~~~text
-Check the channels in ./incoming and prepare a mono working copy under ./work/mono.
+Prepare a mono copy of <DATASET_DIR> under <WORK_DIR>/mono.
 ~~~
 
 </details>
@@ -101,11 +102,11 @@ Check the channels in ./incoming and prepare a mono working copy under ./work/mo
 <summary>Command</summary>
 
 ~~~bash
-python scripts/prepare/prepare_mono.py incoming
+python scripts/prepare/prepare_mono.py "<DATASET_DIR>"
 ~~~
 
 ~~~bash
-python scripts/prepare/prepare_mono.py incoming --output work/mono
+python scripts/prepare/prepare_mono.py "<DATASET_DIR>" --output "<WORK_DIR>/mono"
 ~~~
 
 </details>
@@ -118,7 +119,7 @@ The Skill can search from metadata or independently recognized lyrics and [verif
 <summary>Prompt</summary>
 
 ~~~text
-Identify the songs in ./recordings and find their original lyrics. Give me the sources and say which recordings remain unresolved.
+Identify the songs in <RECORDINGS_DIR> and find their original lyrics.
 ~~~
 
 </details>
@@ -131,7 +132,7 @@ Save the slice plan and export a tab-separated [Audition cut-marker `.csv`](docs
 <summary>Prompt</summary>
 
 ~~~text
-Slice ./recordings/song.wav from the audio. Save the cuts and the slice plan under ./work/song.
+Slice <RECORDING_WAV> into clips under <SONG_WORK_DIR>.
 ~~~
 
 </details>
@@ -140,22 +141,22 @@ Slice ./recordings/song.wav from the audio. Save the cuts and the slice plan und
 <summary>Command</summary>
 
 ~~~bash
-python scripts/prepare/plan_slices.py recordings/song.wav --recording-id song --output work/song/slices.json
-python scripts/prepare/replay_slices.py work/song/slices.json --output work/song/clips
-python scripts/prepare/export_slice_markers.py work/song/slices.json --output work/song/clips/song.csv
+python scripts/prepare/plan_slices.py "<RECORDING_WAV>" --recording-id "<RECORDING_ID>" --output "<SONG_WORK_DIR>/slices.json"
+python scripts/prepare/replay_slices.py "<SONG_WORK_DIR>/slices.json" --output "<SONG_WORK_DIR>/clips"
+python scripts/prepare/export_slice_markers.py "<SONG_WORK_DIR>/slices.json" --output "<SONG_WORK_DIR>/clips/<RECORDING_ID>.csv"
 ~~~
 
 </details>
 
 ## Match lyrics to clips
 
-Match one song at a time. The script workflow uses [Qwen3-ASR](docs/installation.md#optional-asr-for-lyric-matching). Replace `ASR_BUNDLE` with its folder name under `local/models/`. See [lyric matching](docs/lyric-matching.md) for the editable table and match report.
+Match one song at a time. Set `<ASR_MODEL_DIR>` to the local [Qwen3-ASR](docs/installation.md#optional-asr-for-lyric-matching) model directory under `local/models/`. See [lyric matching](docs/lyric-matching.md) for the editable table and match report.
 
 <details name="match" open>
 <summary>Prompt</summary>
 
 ~~~text
-Match the clips in ./work/song/clips to the whole-song lyrics in ./sources/song.txt. Write the paired transcripts and report unmatched clips.
+Write a transcript for each clip in <SONG_WORK_DIR>/clips using the song lyrics in <LYRICS_TXT>.
 ~~~
 
 </details>
@@ -164,9 +165,9 @@ Match the clips in ./work/song/clips to the whole-song lyrics in ./sources/song.
 <summary>Command</summary>
 
 ~~~bash
-python scripts/prepare/transcribe_clips.py work/song/clips --model local/models/ASR_BUNDLE --language zh --output work/song/asr.json
-python scripts/prepare/match_lyrics.py work/song/clips --lyrics sources/song.txt --asr work/song/asr.json --language zh --resources configs/resources.local.json --output work/song/match
-python scripts/prepare/apply_lyrics.py work/song/match/lyrics.csv --audio-root work/song/clips
+python scripts/prepare/transcribe_clips.py "<SONG_WORK_DIR>/clips" --model "<ASR_MODEL_DIR>" --language zh --output "<SONG_WORK_DIR>/asr.json"
+python scripts/prepare/match_lyrics.py "<SONG_WORK_DIR>/clips" --lyrics "<LYRICS_TXT>" --asr "<SONG_WORK_DIR>/asr.json" --language zh --resources "<RESOURCES_JSON>" --output "<SONG_WORK_DIR>/match"
+python scripts/prepare/apply_lyrics.py "<SONG_WORK_DIR>/match/lyrics.csv" --audio-root "<SONG_WORK_DIR>/clips"
 ~~~
 
 </details>
@@ -179,7 +180,7 @@ Use this step when revising cuts is in scope. See [local cut refinement](.agents
 <summary>Prompt</summary>
 
 ~~~text
-Check whether these two adjacent clips split a sung word. If a nearby cut gives better lyrics for both clips, test and apply it.
+Adjust the cut between <LEFT_CLIP> and <RIGHT_CLIP> if it splits a sung word.
 ~~~
 
 </details>
@@ -192,7 +193,7 @@ Pair each clip with a same-basename UTF-8 transcript. Deliver plain lyrics with 
 <summary>Prompt</summary>
 
 ~~~text
-Check the paired Mandarin clips in ./clips. Report missing transcripts, pronunciation failures, and unusual clip durations.
+Check whether the paired Mandarin clips in <PAIRED_CLIPS_DIR> are ready for alignment.
 ~~~
 
 </details>
@@ -201,7 +202,7 @@ Check the paired Mandarin clips in ./clips. Report missing transcripts, pronunci
 <summary>Command</summary>
 
 ~~~bash
-python scripts/preflight.py clips --language zh --resources configs/resources.local.json --output work/preflight
+python scripts/preflight.py "<PAIRED_CLIPS_DIR>" --language zh --resources "<RESOURCES_JSON>" --output "<WORK_DIR>/preflight"
 ~~~
 
 </details>
@@ -214,7 +215,7 @@ See [forced alignment and diagnosis](docs/workflow.md#forced-alignment-and-diagn
 <summary>Prompt</summary>
 
 ~~~text
-Align the paired Mandarin clips in ./clips. Archive the alignment TextGrids and aligned PFML under ./outputs/.work/fa.
+Force-align the Mandarin clips in <PAIRED_CLIPS_DIR> and save the results under <DELIVERY_DIR>, including aligned PFML.
 ~~~
 
 </details>
@@ -223,7 +224,7 @@ Align the paired Mandarin clips in ./clips. Archive the alignment TextGrids and 
 <summary>Command</summary>
 
 ~~~bash
-python scripts/align.py clips --language zh --resources configs/resources.local.json --output outputs/.work/fa --pfml
+python scripts/align.py "<PAIRED_CLIPS_DIR>" --language zh --resources "<RESOURCES_JSON>" --output "<DELIVERY_DIR>/.work/fa" --pfml
 ~~~
 
 </details>
@@ -236,7 +237,7 @@ Use forced-alignment output or existing annotations with usable syllable boundar
 <summary>Prompt</summary>
 
 ~~~text
-Add notes to ./outputs/.work/fa using its existing phonemes and pronunciation groups. Write the annotations to ./outputs/03-annotations.
+Add notes to the existing alignments in <DELIVERY_DIR>.
 ~~~
 
 </details>
@@ -245,7 +246,7 @@ Add notes to ./outputs/.work/fa using its existing phonemes and pronunciation gr
 <summary>Command</summary>
 
 ~~~bash
-python scripts/annotate_notes.py outputs/.work/fa --resources configs/resources.local.json --output outputs/03-annotations
+python scripts/annotate_notes.py "<DELIVERY_DIR>/.work/fa" --resources "<RESOURCES_JSON>" --output "<DELIVERY_DIR>/03-annotations"
 ~~~
 
 </details>
@@ -258,7 +259,7 @@ The built-in importer accepts canonical TextGrid and DiffSinger CSV. For other l
 <summary>Prompt</summary>
 
 ~~~text
-Convert ./source_labels to DiffSinger CSV under ./outputs/06-diffsinger. Reuse the verified phone timings, pronunciation groups, and notes. Deliver CSV only.
+Export DiffSinger CSV only to <DELIVERY_DIR> using the phone timings, pronunciation groups, and notes in <SOURCE_LABELS_PATH>.
 ~~~
 
 </details>
@@ -267,8 +268,8 @@ Convert ./source_labels to DiffSinger CSV under ./outputs/06-diffsinger. Reuse t
 <summary>Command</summary>
 
 ~~~bash
-python scripts/import_annotations.py source_labels --audio-root source_audio --language zh --groups pronunciation --output work/imported
-python scripts/export_diffsinger.py work/imported --resources configs/resources.local.json --no-audio --output outputs/06-diffsinger
+python scripts/import_annotations.py "<SOURCE_LABELS_PATH>" --audio-root "<SOURCE_AUDIO_DIR>" --language zh --groups pronunciation --output "<WORK_DIR>/imported"
+python scripts/export_diffsinger.py "<WORK_DIR>/imported" --resources "<RESOURCES_JSON>" --no-audio --output "<DELIVERY_DIR>/06-diffsinger"
 ~~~
 
 </details>
@@ -281,7 +282,7 @@ See [partial reannotation](docs/workflow.md#partial-reannotation) for layer sele
 <summary>Prompt</summary>
 
 ~~~text
-Regenerate only the notes layer for singer_a/control in ./outputs/03-annotations. Reuse the current phoneme timings and pronunciation groups.
+Regenerate only the notes layer for <SUBSET_PATH> in <DELIVERY_DIR>.
 ~~~
 
 </details>
@@ -290,7 +291,7 @@ Regenerate only the notes layer for singer_a/control in ./outputs/03-annotations
 <summary>Command</summary>
 
 ~~~bash
-python scripts/reannotate.py outputs/03-annotations --layers notes --sample "singer_a/control/*" --resources configs/resources.local.json --output outputs/03-annotations --overwrite
+python scripts/reannotate.py "<DELIVERY_DIR>/03-annotations" --layers notes --sample "<SUBSET_PATH>/*" --resources "<RESOURCES_JSON>" --output "<DELIVERY_DIR>/03-annotations" --overwrite
 ~~~
 
 </details>
@@ -303,7 +304,7 @@ Resolve the input or resource issue before retrying the affected stage. See [sta
 <summary>Prompt</summary>
 
 ~~~text
-Diagnose the failed items in ./outputs/03-annotations and retry the ones whose causes can be resolved. Report any remaining failures.
+Retry the failed annotations in <DELIVERY_DIR>.
 ~~~
 
 </details>
@@ -312,7 +313,7 @@ Diagnose the failed items in ./outputs/03-annotations and retry the ones whose c
 <summary>Command</summary>
 
 ~~~bash
-python scripts/retry.py outputs/03-annotations --stage all --resources configs/resources.local.json --output outputs/03-annotations --overwrite
+python scripts/retry.py "<DELIVERY_DIR>/03-annotations" --stage all --resources "<RESOURCES_JSON>" --output "<DELIVERY_DIR>/03-annotations" --overwrite
 ~~~
 
 </details>
@@ -325,7 +326,7 @@ The quality report describes the annotations. Applying a quality filter places e
 <summary>Prompt</summary>
 
 ~~~text
-Check ./outputs/03-annotations, show the quality distributions, and recommend a retention rule for training.
+Review annotation quality in <DELIVERY_DIR> and recommend a retention rule for training.
 ~~~
 
 </details>
@@ -334,8 +335,8 @@ Check ./outputs/03-annotations, show the quality distributions, and recommend a 
 <summary>Command</summary>
 
 ~~~bash
-python scripts/check.py outputs/03-annotations --complete --audio --resources configs/resources.local.json
-python scripts/report.py outputs/03-annotations --output outputs/04-quality
+python scripts/check.py "<DELIVERY_DIR>/03-annotations" --complete --audio --resources "<RESOURCES_JSON>"
+python scripts/report.py "<DELIVERY_DIR>/03-annotations" --output "<DELIVERY_DIR>/04-quality"
 ~~~
 
 </details>
@@ -348,7 +349,7 @@ Keep editable annotations and paired inputs when compiling a training dataset. S
 <summary>Prompt</summary>
 
 ~~~text
-Keep the editable annotations in ./outputs/03-annotations. Export a training-ready DiffSinger dataset to ./outputs/06-diffsinger.
+Compile the annotations in <DELIVERY_DIR> into a DiffSinger training dataset.
 ~~~
 
 </details>
@@ -357,7 +358,7 @@ Keep the editable annotations in ./outputs/03-annotations. Export a training-rea
 <summary>Command</summary>
 
 ~~~bash
-python scripts/export_diffsinger.py outputs/03-annotations --resources configs/resources.local.json --output outputs/06-diffsinger
+python scripts/export_diffsinger.py "<DELIVERY_DIR>/03-annotations" --resources "<RESOURCES_JSON>" --output "<DELIVERY_DIR>/06-diffsinger"
 ~~~
 
 </details>
