@@ -1,0 +1,5 @@
+{
+  "tifa_model": "../local/models/TIFA_BUNDLE/model.pt",
+  "ved_model": "../local/models/VED_BUNDLE/model.pt",
+  "game_model": "../local/models/GAME_BUNDLE/model.pt"
+}

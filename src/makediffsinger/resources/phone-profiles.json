@@ -1,0 +1,16 @@
+{
+  "global_classes": {"AP": "vowel", "SP": "vowel"},
+  "converter_languages": {
+    "chinese-pinyin": "zh",
+    "yue-jyutping": "yue",
+    "cantonese-jyutping": "yue",
+    "japanese-mecab": "ja",
+    "japanese-kana": "ja"
+  },
+  "dictionaries": {
+    "ds-zh-pinyin-lite.txt": {"language": "zh", "classes": "zh-pinyin-lite.json"},
+    "ds_cmudict-07b.txt": {"language": "en", "classes": "en-cmudict-07b.json"},
+    "japanese_dict_full.txt": {"language": "ja", "classes": "ja-dictionary-full.json"},
+    "jyutping_dict.txt": {"language": "yue", "classes": "yue-jyutping.json"}
+  }
+}

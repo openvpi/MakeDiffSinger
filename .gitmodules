@@ -1,0 +1,6 @@
+[submodule "external/TIFA"]
+	path = external/TIFA
+	url = https://github.com/openvpi/TIFA.git
+[submodule "external/GAME"]
+	path = external/GAME
+	url = https://github.com/openvpi/GAME.git

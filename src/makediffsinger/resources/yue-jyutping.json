@@ -1,0 +1,19 @@
+{
+  "aa": "vowel", "aai": "vowel", "aak": "vowel", "aam": "vowel", "aan": "vowel",
+  "aang": "vowel", "aap": "vowel", "aat": "vowel", "aau": "vowel",
+  "ai": "vowel", "ak": "vowel", "am": "vowel", "an": "vowel", "ang": "vowel",
+  "ap": "vowel", "at": "vowel", "au": "vowel",
+  "b": "consonant", "c": "consonant", "d": "consonant",
+  "e": "vowel", "ei": "vowel", "ek": "vowel", "em": "vowel", "eng": "vowel",
+  "eoi": "vowel", "eon": "vowel", "eot": "vowel", "ep": "vowel", "eu": "vowel",
+  "f": "consonant", "g": "consonant", "gw": "consonant", "h": "consonant",
+  "i": "vowel", "ik": "vowel", "im": "vowel", "in": "vowel", "ing": "vowel",
+  "ip": "vowel", "it": "vowel", "iu": "vowel",
+  "j": "consonant", "k": "consonant", "kw": "consonant", "l": "consonant",
+  "m": "consonant", "n": "consonant", "ng": "consonant",
+  "o": "vowel", "oe": "vowel", "oek": "vowel", "oeng": "vowel", "oi": "vowel",
+  "ok": "vowel", "on": "vowel", "ong": "vowel", "ot": "vowel", "ou": "vowel",
+  "p": "consonant", "s": "consonant", "t": "consonant",
+  "u": "vowel", "ui": "vowel", "uk": "vowel", "un": "vowel", "ung": "vowel", "ut": "vowel",
+  "w": "consonant", "yu": "vowel", "yun": "vowel", "yut": "vowel", "z": "consonant"
+}

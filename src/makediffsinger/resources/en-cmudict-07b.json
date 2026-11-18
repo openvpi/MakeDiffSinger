@@ -1,0 +1,13 @@
+{
+  "_r": "medial", "aa": "vowel", "ae": "vowel", "ah": "vowel",
+  "ao": "vowel", "aw": "vowel", "ax": "vowel", "ay": "vowel",
+  "b": "consonant", "ch": "consonant", "d": "consonant", "dh": "consonant",
+  "dx": "consonant", "eh": "vowel", "er": "vowel", "ey": "vowel",
+  "f": "consonant", "g": "consonant", "hh": "consonant",
+  "ih": "vowel", "iy": "vowel", "jh": "consonant", "k": "consonant",
+  "l": "medial", "m": "consonant", "n": "consonant", "ng": "consonant",
+  "ow": "vowel", "oy": "vowel", "p": "consonant", "r": "medial",
+  "s": "consonant", "sh": "consonant", "t": "consonant", "th": "consonant",
+  "uh": "vowel", "uw": "vowel", "v": "consonant", "w": "medial",
+  "y": "medial", "z": "consonant", "zh": "consonant"
+}

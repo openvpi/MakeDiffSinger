@@ -1,0 +1,16 @@
+{
+  "a": "vowel", "ai": "vowel", "an": "vowel", "ang": "vowel", "ao": "vowel",
+  "b": "consonant", "c": "consonant", "ch": "consonant", "d": "consonant",
+  "e": "vowel", "ei": "vowel", "en": "vowel", "eng": "vowel", "er": "vowel",
+  "f": "consonant", "g": "consonant", "h": "consonant",
+  "i": "vowel", "i0": "vowel", "ia": "vowel", "ian": "vowel", "iang": "vowel",
+  "iao": "vowel", "ie": "vowel", "in": "vowel", "ing": "vowel", "io": "vowel",
+  "iong": "vowel", "ir": "vowel", "iu": "vowel",
+  "j": "consonant", "k": "consonant", "l": "consonant", "m": "consonant", "n": "consonant",
+  "o": "vowel", "ong": "vowel", "ou": "vowel",
+  "p": "consonant", "q": "consonant", "r": "consonant", "s": "consonant", "sh": "consonant", "t": "consonant",
+  "u": "vowel", "ua": "vowel", "uai": "vowel", "uan": "vowel", "uang": "vowel",
+  "ueng": "vowel", "ui": "vowel", "un": "vowel", "uo": "vowel",
+  "v": "vowel", "van": "vowel", "ve": "vowel", "vn": "vowel",
+  "w": "consonant", "x": "consonant", "y": "consonant", "y0": "consonant", "z": "consonant", "zh": "consonant"
+}

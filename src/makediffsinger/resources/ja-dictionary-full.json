@@ -1,0 +1,11 @@
+{
+  "N": "vowel", "a": "vowel", "i": "vowel", "u": "vowel", "e": "vowel", "o": "vowel",
+  "b": "consonant", "by": "consonant", "ch": "consonant", "cl": "consonant",
+  "d": "consonant", "dy": "consonant", "f": "consonant",
+  "g": "consonant", "gw": "consonant", "gy": "consonant", "h": "consonant", "hy": "consonant",
+  "j": "consonant", "k": "consonant", "kw": "consonant", "ky": "consonant",
+  "m": "consonant", "my": "consonant", "n": "consonant", "ny": "consonant",
+  "p": "consonant", "py": "consonant", "r": "consonant", "ry": "consonant",
+  "s": "consonant", "sh": "consonant", "t": "consonant", "ts": "consonant", "ty": "consonant",
+  "v": "consonant", "w": "consonant", "y": "consonant", "z": "consonant"
+}

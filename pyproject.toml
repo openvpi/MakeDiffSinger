@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "makediffsinger"
+version = "0.1.0"
+description = "Create, inspect, and maintain singing datasets through shared Python APIs."
+readme = "README.md"
+requires-python = ">=3.12"
+license = {file = "LICENSE"}
+dependencies = ["numpy>=1.26,<3", "soundfile>=0.13", "textgrid==1.6.1", "PyYAML>=6", "filelock"]
+
+[project.optional-dependencies]
+inference = [
+  "torch>=2.8,<3", "lightning>=2.6,<3", "librosa>=0.11",
+  "g2pflow[ja,lstm]>=0.3,<0.4", "pydantic>=2.11,<3", "einops>=0.7",
+  "click", "colorednoise", "dask", "h5py", "loguru", "matplotlib", "mido",
+  "numba", "omegaconf", "onnx", "onnxscript", "onnxslim",
+  "praat-parselmouth", "resampy", "scipy>=1.10", "sympy",
+  "tensorboard", "tensorboardX", "torchmetrics", "tqdm"
+]
+opus = ["opuscodec"]
+plots = ["matplotlib>=3.8"]
+asr-qwen = ["qwen-asr==0.0.6", "torch>=2.8,<3", "librosa>=0.11"]
+dev = ["pytest>=8"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+makediffsinger = ["resources/*.json"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = ["inference: requires externally supplied model bundles"]
