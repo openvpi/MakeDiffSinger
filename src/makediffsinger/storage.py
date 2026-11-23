@@ -3,6 +3,7 @@
 from copy import deepcopy
 from dataclasses import asdict
 import json
+import math
 from pathlib import Path
 
 from .annotations import read_textgrid, tier_signatures, write_textgrid
@@ -74,7 +75,7 @@ def _persist_buffer(sample: Sample, root: Path) -> Sample:
 def annotation_to_dict(annotation: Annotation, *, include_tiers=True) -> dict:
     result = {"format": "makediffsinger.annotation", "version": 1,
               "sample": sample_to_dict(annotation.sample), "duration": annotation.duration,
-              "quality": annotation.quality,
+              "quality": _portable_quality(annotation.quality),
               "provenance": {k: v for k, v in annotation.provenance.items() if not k.startswith("_")},
               "status": annotation.status, "stale": annotation.stale,
               "edited_layers": annotation.edited_layers,
@@ -120,13 +121,17 @@ def _metric_key(key):
     return key, "annotation"
 
 
+def _portable_quality(quality):
+    return {k: None if isinstance(v, float) and not math.isfinite(v) else v for k, v in quality.items()}
+
+
 def _store_metrics(batch, key, quality):
     path = batch.root / "04-quality/metrics.json"
     sample, stage = _metric_key(key)
     row = dict(batch.get(path, sample))
     if stage == "alignment" and "annotation" not in row and batch.get(batch.root / ".metadata/annotations.json", sample):
         row["annotation"] = row.get("alignment", {})
-    row[stage] = quality
+    row[stage] = _portable_quality(quality)
     if row.get("annotation") == row.get("alignment"):
         row.pop("annotation", None)
     batch.set(path, sample, row if any(row.values()) else None)
@@ -184,7 +189,8 @@ def store_asset(batch, path, annotation, signatures):
         _associate_sample(batch, annotation.sample)
     provenance = {k: v for k, v in annotation.provenance.items() if k in (
         "groups_verified", "imported_ph_num", "imported_phones_signature", "source_annotation",
-        "time_resolution_seconds", "layer_origins", "unmapped_source_fields")}
+        "game_grid", "boundary_tolerance_ms", "audio_warning_ms", "imported_phone_labels",
+        "layer_origins", "unmapped_source_fields")}
     if "syllable_input" in annotation.provenance:
         provenance["syllable_input"] = {"method": annotation.provenance["syllable_input"]["method"]}
         if provenance["syllable_input"]["method"] == "unconstrained":
@@ -255,6 +261,9 @@ def read_annotations(path: str | Path, *, sample: Sample | None = None, tier_map
     current = tier_signatures(tiers)
     changed = [name for name in previous.keys() | current.keys() if previous.get(name) != current.get(name)] if previous else []
     annotation.tiers, annotation.duration = tiers, duration
+    if ("imported_ph_num" in annotation.provenance and "imported_phone_labels" not in annotation.provenance
+            and annotation.provenance.get("imported_phones_signature") == current.get("phones") and "phones" in tiers):
+        annotation.provenance["imported_phone_labels"] = [p.label for p in tiers["phones"]]
     annotation.edited_layers = sorted(set(annotation.edited_layers) | set(changed))
     if set(changed) & {"phones", "words"}:
         annotation.stale = sorted(set(annotation.stale) | {"quality"} | ({"notes"} if "notes" in tiers else set()))
@@ -322,18 +331,27 @@ def _write_asset(annotation, root, batch, overwrite, replace_edited, archive_fa)
     return path
 
 
-def load_annotations(root: str | Path) -> list[Annotation]:
+def load_annotations(root: str | Path, *, failures=None) -> list[Annotation]:
     root = Path(root)
     if not root.exists():
         raise FileNotFoundError(root)
-    if root.is_file():
-        return [read_annotations(root)]
     if (root / "03-annotations").is_dir():
         root = root / "03-annotations"
     elif any(p.is_dir() for p in root.glob("*/03-annotations")):
         raise ValueError("Read each input dataset's 03-annotations separately.")
-    return [read_annotations(path) for path in sorted(root.rglob("*.TextGrid"))
-            if not any(part.startswith(".") for part in path.relative_to(root).parts)]
+    paths = [root] if root.is_file() else (
+        path for path in sorted(root.rglob("*.TextGrid"))
+        if not any(part.startswith(".") for part in path.relative_to(root).parts))
+    annotations = []
+    for path in paths:
+        try:
+            annotations.append(read_annotations(path))
+        except (ValueError, OSError) as exc:
+            if failures is None:
+                raise
+            relative = path.relative_to(root.parent if root.is_file() else root)
+            failures.append({"key": relative.with_suffix("").as_posix(), "reason": str(exc)})
+    return annotations
 
 
 def save_result(result: BatchResult, root: str | Path, *, overwrite=False, replace_edited=False,

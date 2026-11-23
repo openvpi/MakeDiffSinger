@@ -4,6 +4,8 @@ from copy import deepcopy
 from dataclasses import dataclass, field
 
 from .annotations import TIERS, tier_signatures
+from .phonology import derive_syllables
+from .timing import align_tiers
 from .types import Annotation, Issue, Outcome
 from .validation import validate
 
@@ -57,17 +59,33 @@ def apply_annotation_updates(original: Annotation, candidate: Annotation, plan: 
                     merged.provenance[key] = candidate.provenance[key]
                 else:
                     merged.provenance.pop(key, None)
-            merged.provenance["time_resolution_seconds"] = candidate.provenance.get("time_resolution_seconds", 0.0)
             merged.stale = [name for name in merged.stale if name != "quality"]
         else:
             merged.stale = sorted(set(merged.stale) | {"quality"})
         if set(plan.layers) & {"phones", "words"}:
             merged.provenance.pop("imported_ph_num", None)
             merged.provenance.pop("imported_phones_signature", None)
+            merged.provenance.pop("imported_phone_labels", None)
         if {"phones", "words"} <= set(plan.layers):
             merged.provenance["groups_verified"] = candidate.provenance.get("groups_verified", False)
     if "notes" in plan.layers:
-        for key in ("game", "raw_notes", "syllable_input", "game_input_padding_samples"):
+        if "game_grid" in candidate.provenance and not changed_fa:
+            # Timing projection of the supplied tiers belongs to the notes result.
+            merged.duration = candidate.duration
+            for name, tier in original.tiers.items():
+                if name == "notes":
+                    continue
+                projected = candidate.tiers.get(name, [])
+                if [i.label for i in tier] != [i.label for i in projected]:
+                    return Outcome(original.sample, "conflict", candidate, [
+                        Issue("invalid_merge", f"Notes update would replace labels in {name}.", "update")])
+                merged.tiers[name] = projected
+            for key in ("imported_ph_num", "imported_phone_labels", "imported_phones_signature"):
+                if key in candidate.provenance:
+                    merged.provenance[key] = candidate.provenance[key]
+                else:
+                    merged.provenance.pop(key, None)
+        for key in ("game", "game_grid", "raw_notes", "syllable_input", "game_input_padding_samples"):
             if key in candidate.provenance:
                 merged.provenance[key] = candidate.provenance[key]
         merged.stale = [name for name in merged.stale if name != "notes"]
@@ -77,6 +95,14 @@ def apply_annotation_updates(original: Annotation, candidate: Annotation, plan: 
         origins[layer] = candidate.provenance.get("layer_origins", {}).get(layer, "candidate")
     merged.provenance["last_update"] = {"layers": list(plan.layers), "stages": plan.stages}
     merged.status = "annotated" if set(TIERS) <= merged.tiers.keys() else "partial"
+    if "notes" in plan.layers and changed_fa and "game_grid" in candidate.provenance:
+        grid = candidate.provenance["game_grid"]
+        step = grid["hop_size"] / grid["sample_rate"]
+        try:
+            merged = align_tiers(merged, derive_syllables(merged, profiles), timestep=step,
+                                 end_frame=round(merged.duration / step))
+        except ValueError as exc:
+            return Outcome(original.sample, "conflict", candidate, [Issue("invalid_merge", str(exc), "update")])
     issues = validate(merged, profiles=profiles, ignore_stale=True)
     if any(i.severity == "error" for i in issues):
         return Outcome(original.sample, "conflict", candidate,

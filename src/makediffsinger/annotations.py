@@ -3,15 +3,15 @@
 import hashlib
 import json
 import math
+import sys
 from pathlib import Path
 
 import textgrid
 
 from .types import Annotation, Interval
+from .timing import JOIN_TOLERANCE_MS, near, tier_edges, tolerance
 
 TIERS = ("texts", "words", "phones", "notes")
-TIME_EPS = 0.00002
-SERIALIZATION_EPS = 1e-10
 
 
 def fill_gaps(intervals: list[Interval], duration: float, label="SP") -> list[Interval]:
@@ -20,15 +20,19 @@ def fill_gaps(intervals: list[Interval], duration: float, label="SP") -> list[In
     for item in intervals:
         if not math.isfinite(item.start) or not math.isfinite(item.end) or item.end <= item.start:
             raise ValueError(f"Invalid interval: {item}")
-        if item.start < cursor - TIME_EPS:
+        start = cursor if near(item.start, cursor, JOIN_TOLERANCE_MS) else item.start
+        if start < cursor or item.end <= start:
             raise ValueError(f"Overlapping intervals at {item.start}.")
-        if item.start > cursor + 1e-10:
+        if start > cursor:
             result.append(Interval(cursor, item.start, label))
-        result.append(Interval(item.start, item.end, item.label if item.label.strip() else label))
+        result.append(Interval(start, item.end, item.label if item.label.strip() else label))
         cursor = item.end
-    if cursor > duration + TIME_EPS:
+    if result and near(cursor, duration, JOIN_TOLERANCE_MS) and duration > result[-1].start:
+        result[-1] = Interval(result[-1].start, duration, result[-1].label)
+        return result
+    if cursor > duration:
         raise ValueError("Intervals extend past the annotation domain.")
-    if duration > cursor + 1e-10:
+    if duration > cursor:
         result.append(Interval(cursor, duration, label))
     return result
 
@@ -60,21 +64,21 @@ def write_textgrid(annotation: Annotation, path: str | Path) -> None:
             continue
         tier = textgrid.IntervalTier(name, minTime=0, maxTime=annotation.duration)
         intervals = annotation.tiers[name]
-        for index, item in enumerate(intervals):
-            # TextGrid requires exact domain equality; equivalent frame times
-            # may differ by a few floating-point ULPs after a file round trip.
-            end = annotation.duration if (
-                index == len(intervals) - 1 and abs(item.end - annotation.duration) < SERIALIZATION_EPS
-            ) else item.end
-            tier.add(item.start, end, item.label)
+        edges = tier_edges(intervals, annotation.duration, tolerance(annotation))
+        for start, end, item in zip(edges, edges[1:], intervals):
+            tier.add(start, end, item.label)
         grid.append(tier)
     grid.write(str(path))
 
 
 def read_textgrid(path: str | Path, tier_map: dict[str, str] | None = None) -> tuple[float, dict]:
-    grid = textgrid.TextGrid()
-    grid.read(str(path), round_digits=15)
-    if abs(grid.minTime) > TIME_EPS:
+    grid = textgrid.TextGrid(strict=False)
+    # The reader calls round(float, ndigits); preserve the serialized model clock.
+    try:
+        grid.read(str(path), round_digits=sys.maxsize)
+    except (textgrid.exceptions.TextGridError, AttributeError, IndexError) as exc:
+        raise ValueError(f"Invalid TextGrid {path.name}: {exc}") from exc
+    if not near(grid.minTime, 0, JOIN_TOLERANCE_MS):
         raise ValueError("Clip annotations must use a zero-based time domain; map source offsets explicitly.")
     tiers = {}
     for tier in grid:

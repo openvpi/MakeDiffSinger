@@ -108,11 +108,10 @@ def quality_tail_summary(annotations, criteria, *, bands=10, preview_fraction=No
 
 
 def write_overview(report, output, *, plots=True, tifa_repo=None):
-    """Publish TIFA's native statistics files for complete, current diagnoses."""
+    """Publish available native statistics for current diagnoses."""
     output = Path(output).resolve()
     quality = report["quality"]
-    required = {*QUALITY_METRICS, "num_frames", "num_tokens", "num_skipped_tokens"}
-    records = [r for r in quality["diagnosis"] if required <= r.keys()]
+    records = [r for r in quality["diagnosis"] if any(m in r for m in QUALITY_METRICS)]
     ids = {r["identifier"] for r in records}
     scores = [r for r in quality.get("pronunciations", []) if r["identifier"] in ids]
     names = ["diagnosis.json", "scores.json", *(f"{m}_{plot}.jpg" for m in QUALITY_METRICS
@@ -126,12 +125,13 @@ def write_overview(report, output, *, plots=True, tifa_repo=None):
                                     env={**os.environ, "MPLBACKEND": "Agg"}, stderr=subprocess.PIPE)
             if result.returncode:
                 raise RuntimeError(result.stderr.decode(errors="replace"))
-            files = [Path(tmp) / name for name in names]
-            if not all(path.is_file() for path in files):
-                raise RuntimeError("The forced aligner's statistics bundle is incomplete.")
             output.mkdir(parents=True, exist_ok=True)
-            for path in files:
-                copyfile(path, output / path.name)
+            for name in names:
+                path = Path(tmp) / name
+                if path.is_file():
+                    copyfile(path, output / name)
+                else:
+                    (output / name).unlink(missing_ok=True)
     else:
         for name in names:
             (output / name).unlink(missing_ok=True)

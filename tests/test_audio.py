@@ -8,13 +8,13 @@ import pytest
 import soundfile as sf
 
 from makediffsinger.audio import compare_stereo, load_audio, mix_stereo, replay_audio
-from makediffsinger.backends.game_input import prepare_audio
+from makediffsinger.backends.game_input import prepare_input
 from makediffsinger.cut_planning import Cut, _pause_cuts
 from makediffsinger.cut_revision import inspect_cut, revise_cut
 from makediffsinger.inputs import discover_pairs
 from makediffsinger.script_utils import run
 from makediffsinger.slicing import Slice, SlicePlan, plan_slices, replay_slices, write_audition_markers
-from makediffsinger.types import Annotation, AudioSource, Sample, Syllable
+from makediffsinger.types import Annotation, AudioSource, Interval, Sample, Syllable
 from scripts.prepare import extract_channel, prepare_mono
 
 
@@ -290,22 +290,21 @@ def test_local_cut_revision_preserves_source_pcm_and_neighboring_bounds(tmp_path
         revise_cut(plan, "a", "c", move_to=1500)
 
 
-def test_model_padding_cannot_hide_bad_timing_or_change_source():
+def test_game_projects_off_grid_inputs_and_warns_about_audio_duration():
     source = np.linspace(-.5, .5, 3280, dtype=np.float32)
     original = source.copy()
-    annotation = Annotation(Sample("clip", AudioSource(waveform=source, sample_rate=16000)), .21, {},
-                            provenance={"time_resolution_seconds": .01})
-    config = dict(rate=16000, timestep=.01, hop_size=160, fft_size=512, win_size=512)
-    waveform, padding = prepare_audio(annotation, [Syllable(0, 1, 0, .21)], **config)
-    assert padding == 80 and len(waveform) == 3360
+    phones = [Interval(0, .105, "a"), Interval(.105, .31, "b")]
+    annotation = Annotation(Sample("clip", AudioSource(waveform=source, sample_rate=16000)), .31, {"phones": phones},
+                            provenance={"time_resolution_seconds": .000001})
+    features = SimpleNamespace(audio_sample_rate=16000, timestep=.01, hop_size=160, fft_size=512, win_size=512)
+    projected, durations, waveform, padding, issues = prepare_input(
+        annotation, [Syllable(i, 1, p.start, p.end) for i, p in enumerate(phones)], features)
+    assert projected.duration == .2 and durations == [.1, .1]
+    assert annotation.tiers["phones"] == phones and annotation.duration == .31
+    assert [(i.code, i.severity) for i in issues] == [("audio_endpoint", "warning")]
     np.testing.assert_array_equal(source, original)
-    np.testing.assert_array_equal(waveform[:len(source)], original)
-    assert np.all(waveform[-padding:] == 0)
-    with pytest.raises(ValueError, match="cannot be represented"):
-        prepare_audio(annotation, [Syllable(0, 1, 0, .105), Syllable(1, 1, .105, .21)], **config)
-    annotation.duration = .31
-    with pytest.raises(ValueError, match="source mapping"):
-        prepare_audio(annotation, [Syllable(0, 1, 0, .31)], **config)
+    np.testing.assert_array_equal(waveform, original)
+    assert padding == 0
 
 
 def test_corrupt_audio_reports_decode_or_missing_decoder_error(tmp_path):
@@ -318,11 +317,10 @@ def test_corrupt_audio_reports_decode_or_missing_decoder_error(tmp_path):
 def test_unconstrained_audio_uses_only_the_native_clip_domain():
     source = np.zeros(3297, dtype=np.float32)
     annotation = Annotation(Sample("clip", AudioSource(waveform=source, sample_rate=16000)), len(source) / 16000, {})
-    config = dict(rate=16000, timestep=.01, hop_size=160, fft_size=512, win_size=512)
-    waveform, padding = prepare_audio(annotation, None, **config)
+    features = SimpleNamespace(audio_sample_rate=16000, timestep=.01, hop_size=160, fft_size=512, win_size=512)
+    _, _, waveform, padding, _ = prepare_input(annotation, None, features)
     assert len(waveform) == 3360 and padding == 63
     with pytest.raises(ValueError, match="at least one syllable"):
-        prepare_audio(annotation, [], **config)
+        prepare_input(annotation, [], features)
     annotation.duration += .1
-    with pytest.raises(ValueError, match="source mapping"):
-        prepare_audio(annotation, None, **config)
+    assert prepare_input(annotation, None, features)[-1][0].severity == "warning"

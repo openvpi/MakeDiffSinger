@@ -27,7 +27,7 @@ Opt-in integration checks exercise real model composition, per-item preflight re
 
 For a model regression, preserve the failing candidate and a reproduction with the input, constraint, and backend revision. Fix defects in the owning repository and validate the updated submodule revision here.
 
-Test source-domain mismatches separately from model-frame rounding. Only bounded model-input padding is permitted; invalid source mappings and unrepresentable boundaries must remain errors. Serialization tolerance must not hide real timing errors.
+Exercise hand-edited and off-grid tiers through import, note extraction, partial update, TextGrid reload and training export. Check ordered nearest-boundary matching, local frame collisions and stable re-projection. Audio endpoint discrepancies produce warnings. Invalid source sample ranges and impossible interval geometry still identify the affected item.
 
 ## Consumer and workflow checks
 

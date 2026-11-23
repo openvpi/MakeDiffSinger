@@ -21,7 +21,7 @@ If a constrained run fails, use [failure handling](setup-and-recovery.md#classif
 | --- | --- |
 | The forced aligner skips phones from a verified sung word | Check the clip, text, and pronunciation first. On a small pilot, raising `--skip-penalty` makes a zero-frame phone costlier. Check for forced alignments to unsung material. `--score-unit` controls pronunciation scoring templates and should stay fixed when comparing skip penalties. |
 | Automatic breath or event insertion is unsuitable | If VED is configured, use `--ved-events` to select its comma-separated event labels, or `--no-ved` to disable it for the run. Check the resulting labels and timings. |
-| Notes split too often or neighboring notes are missed | Check the supplied syllable boundaries first. Lower `--seg-threshold` or use a wider `--seg-radius` in seconds to test fewer model-predicted boundaries. Try the opposite for missed boundaries. Change one option and check both split and merged notes. |
+| Notes split too often or neighboring notes are missed | Check the supplied syllable boundaries first. Lower `--seg-threshold` or increase `--seg-radius-ms` (default 20 ms) to test fewer model-predicted boundaries. Try the opposite for missed boundaries. Change one option and check both split and merged notes. |
 | Too many rests or notes reported in rests | Lower `--est-threshold` to accept weaker note-presence scores, or raise it to suppress weak detections. Compare the suspected regions with the audio. |
 
 Keep `--oov-handling raise` when diagnosing lexicon problems. Use the [G2P guide](pronunciation.md) to check the written lyrics before supplying a pronunciation override. Leave `--game-language` unset for standard note extraction, even when the singing language is known. The option is available for explicitly requested GAME language conditioning. `--steps`, `--t0`, and `--timesteps` control GAME's sampling schedule. Use a fixed runtime and schedule when evaluating a decoder adjustment.
@@ -34,7 +34,7 @@ Use `--sample` with explicit IDs or quoted patterns to limit the update and `--l
 
 | Request | Processing and preservation |
 | --- | --- |
-| Regenerate only notes | Reuse existing verified groups and phones or declared syllable counts. Run the note extractor and preserve the first three layers. |
+| Regenerate only notes | Reuse the supplied labels and verified groups or phone counts. The note extractor places the output tiers on its frame grid. Pass the editable source directly and write the result to the requested destination. |
 | Retry failed samples | Select problem records; refresh their selected input transcripts. Leave successful samples outside the selection untouched. |
 | Correct lyrics and redo FA | Retain the previous input and reason. Recompute the requested FA layers; identify related notes as stale unless their update is also requested. |
 | Replace only one FA layer | Compute the necessary FA context, then merge only the requested layer. A boundary conflict requires a wider authorized update or manual resolution. |

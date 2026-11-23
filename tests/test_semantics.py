@@ -12,6 +12,7 @@ from makediffsinger.config import Resources
 from makediffsinger.phonology import PhoneProfiles, derive_syllables, group_onsets
 from makediffsinger.types import Interval
 from makediffsinger.validation import validate
+from makediffsinger.timing import covered_frames, frame_coordinates, match_boundaries
 
 
 @pytest.mark.parametrize("kinds,expected", [
@@ -131,7 +132,7 @@ def test_serialization_canonicalizes_only_a_numerically_equal_tail(tmp_path, ann
     duration, tiers = read_textgrid(path)
     assert tiers["notes"][-1].end == duration == 1
     assert annotation.tiers["notes"][-1].end > duration
-    annotation.tiers["notes"][-1] = replace(last, end=1.000001)
+    annotation.tiers["notes"][-1] = replace(last, end=1.012)
     with pytest.raises(ValueError):
         write_textgrid(annotation, tmp_path / "invalid.TextGrid")
 
@@ -142,7 +143,7 @@ def test_audio_tolerance_does_not_relax_layer_alignment(annotation, profiles):
     for name, tier in shifted.tiers.items():
         tier[-1] = Interval(tier[-1].start, shifted.duration, tier[-1].label)
     assert not validate(shifted, profiles=profiles, check_audio=True)
-    shifted.tiers["notes"][-1] = Interval(.7, 1, "rest")
+    shifted.tiers["notes"][-1] = Interval(.7, .990, "rest")
     assert "layer_endpoint" in {i.code for i in validate(shifted, profiles=profiles, check_audio=True)}
     shifted.duration = 1.02
     assert "audio_endpoint" in {i.code for i in validate(shifted, check_audio=True)}
@@ -156,3 +157,22 @@ def test_unverified_groups_and_stale_imported_counts_need_review(annotation, pro
     annotation.provenance["imported_phones_signature"] = "obsolete"
     with pytest.raises(ValueError, match="stale"):
         derive_syllables(annotation)
+
+
+def test_ordered_matching_chooses_closest_feasible_boundary_assignment():
+    anchors = [0., .095, .100, .106, .4]
+    assert match_boundaries([0., .1035, .107, .4], anchors, 10) == [0, 2, 3, 4]
+    assert match_boundaries([0., .104, .4], anchors, 10) == [0, 3, 4]
+    with pytest.raises(ValueError, match="within 1 ms"):
+        match_boundaries([0., .1035, .107, .4], anchors, 1)
+
+
+def test_frame_collisions_respect_local_budget_and_are_idempotent():
+    assert covered_frames(.575, .01) == 58
+    layers = {"phones": [0., .101, .104, .2], "words": [0., .104, .2]}
+    frames = frame_coordinates(layers, .01, 20, 10)
+    assert [frames[t] for t in layers["phones"]] == [0., .1, .11, .2]
+    projected = {k: [frames[t] for t in times] for k, times in layers.items()}
+    assert all(t == u for t, u in frame_coordinates(projected, .01, 20, 10).items())
+    with pytest.raises(ValueError, match="phones"):
+        frame_coordinates(layers, .01, 20, 0)

@@ -122,11 +122,15 @@ class AlignmentOptions:
 class NoteOptions:
     language: str | None = None
     boundary_threshold: float = 0.2
-    boundary_radius_seconds: float = 0.02
+    boundary_radius_ms: int = 20
     presence_threshold: float = 0.2
     t0: float = 0.0
     steps: int = 8
     timesteps: list[float] | None = None
+
+    def __post_init__(self):
+        from .timing import milliseconds
+        milliseconds(self.boundary_radius_ms)
 
 
 def config_dict(value) -> dict:

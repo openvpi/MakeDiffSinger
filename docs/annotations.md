@@ -31,9 +31,9 @@ Source slices use original-rate sample indices [start_sample, end_sample). Resam
 
 The forced aligner's configuration determines alignment frame times. The note extractor uses integer frame counts to avoid accumulating float32 duration drift. The annotation also retains raw model durations, presence, and MIDI scores. Integer cents in editable note labels do not replace the raw numeric pitch record.
 
-Audio endpoint checking permits the recorded annotation time resolution plus one source sample. Layer coverage and syllable matching use a separate 20-microsecond numerical tolerance. Off-grid model constraints are reported, not repaired by shifting exported note endpoints.
+Hand-edited TextGrids can use arbitrary timestamps. The cross-tier tolerance defaults to 10 ms. Each pronunciation-group boundary matches a distinct phone boundary in order, minimizing total distance among matches within tolerance. The same rule matches syllables to notes. Each tier joins consecutive intervals within 1 ms. Audio duration differences above 10 ms produce a warning with both durations. Imports can override these thresholds with integer `boundary_tolerance_ms` and `audio_warning_ms`.
 
-If the declared alignment domain needs slightly more audio than the source supplies, only the model input may receive zero padding. The amount is bounded by the recorded resolution, a source sample, and the feature extractor's required context; it is recorded per sample. A larger mismatch is rejected. Source audio and annotation boundaries remain unchanged. TextGrid serialization may canonicalize only a final endpoint within 1e-10 seconds of the domain to satisfy exact floating-point equality.
+Constrained note extraction uses the labelled duration covered by the WAV, rounded to the nearest model frame. It projects cumulative boundaries once and reserves a positive interval on each tier. Shared boundaries retain a common frame. If a cluster cannot fit within the available local frames, the item diagnostic identifies the timing conflict. Only the input buffer receives padding for frame rounding and feature extraction. The saved frame clock uses the model's exact hop size and sample rate, including fractional-millisecond steps. Source audio and slicing markers retain their original sample coordinates.
 
 ## Files
 
@@ -47,7 +47,7 @@ The standard pipeline binds the input automatically. Before processing separate 
 
 Saved grouping records retain the method, verified grouping state, and imported phone counts and signatures when applicable.
 
-Explicit unconstrained extraction produces a separate notes-only asset. Its `syllable_input` method is `unconstrained`, and its domain follows the note extractor's frame duration. Source-audio endpoint checking uses the recorded frame resolution.
+Explicit unconstrained extraction produces a separate notes-only asset. Its `syllable_input` method is `unconstrained`, and its domain follows the audio duration rounded to the note extractor's frame grid.
 
 A blocking issue is indexed by asset path in `05-review-and-decisions/issues.json` with the input, stage, and reason. It can retain a candidate for retry. A successful save clears the corresponding issue.
 
@@ -59,11 +59,11 @@ Optional JSON checkpoints include all layers. Persist in-memory audio explicitly
 
 Small layer signatures detect edits after TextGrid round trips. A loaded asset also carries a concurrency guard so a later write cannot silently overwrite intervening edits.
 
-Phone/group edits invalidate related notes and the applicability of original quality scores. A model rerun can compute more context than it is allowed to replace. Partial updates preserve all unselected layers and samples.
+Phone/group edits invalidate related notes and the applicability of original quality scores. A notes update projects the supplied labels to the output frame grid. Other samples retain their original assets.
 
 Quality metrics are model diagnostics, not calibrated probabilities. Negative finite values are valid. Padding columns in pronunciation score tensors are omitted; non-finite candidate scores use explicit strings such as -inf instead of pretending to be zero.
 
-Do not reuse source grouping counts after editing their phones: imported ph_num is tied to the imported phone sequence. Either provide a new verified mapping or use pronunciation groups and language-bound profiles.
+Imported `ph_num` follows the ordered phone labels across timing edits. After sequence changes, derive new counts from verified pronunciation groups or supply a new mapping. Older assets with only a timing-sensitive signature can establish a label baseline while the signature still matches.
 
 ## DiffSinger compilation
 
@@ -73,4 +73,4 @@ Each subset contains `transcriptions.csv` and, for an audio export, `wavs/`. Sub
 
 Each subset CSV identifies its training rows and the matching WAV stems. Names containing DiffSinger's reserved # or : need an explicit ID mapping.
 
-The DiffSinger pitch reader rejects all-rest samples. Keep their editable annotations and exclude them from the training selection.
+The export uses the configured note model's grid or the clock saved on the annotation. A standalone conversion with neither uses GAME's default frame clock (441 samples at 44.1 kHz, or 10 ms). Uncompilable items, including all-rest pitch rows, appear in the export's failed list. The remaining training rows are written and the CLI returns partial status.

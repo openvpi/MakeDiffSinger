@@ -14,10 +14,11 @@ from pathlib import Path
 import pytest
 import soundfile as sf
 
-from makediffsinger.api import Pipeline, export_diffsinger
+from makediffsinger.api import Pipeline, export_diffsinger, import_annotations
+from makediffsinger.annotations import write_textgrid
 from makediffsinger.config import Resources, Runtime
 from makediffsinger.storage import load_annotations, save_result
-from makediffsinger.types import AudioSource, Sample, Transcript
+from makediffsinger.types import Annotation, AudioSource, Interval, Sample, Transcript
 from makediffsinger.validation import validate
 
 
@@ -84,5 +85,35 @@ def test_note_only_extraction_needs_no_transcript_or_phone_resources(tmp_path):
         assert not validate(annotation, check_audio=True)
         assert save_result(result, tmp_path / "notes")["saved"] == 1
         assert set(load_annotations(tmp_path / "notes")[0].tiers) == {"notes"}
-        with pytest.raises(ValueError, match="Missing phones"):
-            export_diffsinger(result.annotations, tmp_path / "export", copy_audio=False)
+        manifest = export_diffsinger(result.annotations, tmp_path / "export", copy_audio=False)
+        assert "Missing phones" in manifest["failed"][0]["reason"]
+
+
+def test_hand_edited_textgrid_to_notes_reannotation_and_csv(tmp_path):
+    source = next(sample for sample, expected in samples() if expected == "ready")
+    seconds = sf.info(source.audio.path).duration
+    end = seconds + .023
+    cut = seconds * .431
+    phones = [Interval(0, cut, "a"), Interval(cut, end, "a")]
+    words = [Interval(0, cut + .004, "a"), Interval(cut + .004, end, "a")]
+    path = tmp_path / "hand-edited.TextGrid"
+    write_textgrid(Annotation(source, end, {"phones": phones, "words": words, "texts": words}), path)
+    original = path.read_bytes()
+    imported, = import_annotations(path, sample=replace(source, language="zh"), groups_verified=True).annotations
+    with Pipeline(Resources.read(os.environ["MDS_RESOURCES"]), Runtime(device=os.getenv("MDS_DEVICE"))) as pipeline:
+        result = pipeline.annotate_notes([imported])
+        assert not result.problems, result.problems
+        assert any(i.code == "audio_endpoint" and i.severity == "warning" for i in result.outcomes[0].issues)
+        final, = result.annotations
+        grid = final.provenance["game_grid"]
+        step = grid["hop_size"] / grid["sample_rate"]
+        for tier in final.tiers.values():
+            assert tier[-1].end == final.duration
+            assert all(i.end == pytest.approx(round(i.end / step) * step) for i in tier)
+        assert save_result(result, tmp_path / "annotations")["saved"] == 1
+        restored, = load_annotations(tmp_path / "annotations")
+        rerun, = pipeline.reannotate([restored], layers=("notes",)).annotations
+        assert rerun.tiers == final.tiers
+        manifest = export_diffsinger([restored], tmp_path / "training", profiles=pipeline.profiles)
+        assert manifest["failed"] == [] and len(manifest["selected"]) == 1
+    assert path.read_bytes() == original

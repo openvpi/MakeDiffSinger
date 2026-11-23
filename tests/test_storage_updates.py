@@ -144,9 +144,8 @@ def test_foreign_json_and_nonfinite_metadata_are_not_overwritten(tmp_path, annot
         write_annotations(annotation, root)
     assert json.loads(path.read_text()) == {"source": "original"}
     annotation.quality["confidence"] = float("nan")
-    with pytest.raises(ValueError):
-        write_annotations(annotation, tmp_path / "invalid")
-    assert not list((tmp_path / "invalid").rglob("*.TextGrid"))
+    saved = write_annotations(annotation, tmp_path / "partial-quality")
+    assert read_annotations(saved).quality["confidence"] is None
 
 
 def test_result_keeps_pending_and_success_then_retry_clears_problem(tmp_path, annotation):
@@ -165,7 +164,7 @@ def test_result_keeps_pending_and_success_then_retry_clears_problem(tmp_path, an
 def test_unserializable_candidate_does_not_abort_other_samples(tmp_path, annotation):
     invalid = deepcopy(annotation)
     invalid.sample.id = "invalid"
-    invalid.quality["confidence"] = float("nan")
+    invalid.provenance["malformed"] = float("nan")
     counts = save_result(BatchResult([Outcome(invalid.sample, "annotated", invalid),
                                      Outcome(annotation.sample, "annotated", annotation)]), tmp_path / "results")
     assert counts["saved"] == counts["conflict"] == 1

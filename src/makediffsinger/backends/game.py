@@ -14,9 +14,10 @@ from inference.me_infer_module import InferenceModule
 from lib.config.schema import ValidationConfig
 
 from ..config import is_device_unsupported
-from ..types import BatchResult, Interval, Issue, Outcome
+from ..timing import align_tiers
+from ..types import BatchResult, Interval, Issue, Outcome, Syllable
 from .common import MetadataTransferMixin, ResultCollector, configure_precision, model_record
-from .game_input import prepare_audio
+from .game_input import prepare_input
 
 
 class GameInputs(torch.utils.data.Dataset):
@@ -29,20 +30,16 @@ class GameInputs(torch.utils.data.Dataset):
     def __getitem__(self, index):
         annotation, syllables = self.requests[index]
         try:
-            waveform, padding = prepare_audio(
-                annotation, syllables, rate=self.features.audio_sample_rate, timestep=self.features.timestep,
-                hop_size=self.features.hop_size, fft_size=self.features.fft_size, win_size=self.features.win_size,
-            )
+            annotation, durations, waveform, padding, issues = prepare_input(annotation, syllables, self.features)
         except (OSError, ValueError, RuntimeError) as exc:
             return {"skip": True, "annotation": annotation,
                     "issues": [Issue("invalid_note_input", str(exc), "game")]}
         waveform = torch.from_numpy(waveform).float()
-        return {"skip": False, "annotation": annotation, "issues": [],
+        return {"skip": False, "annotation": annotation, "issues": issues,
                 "input_padding_samples": padding,
                 "index": "memory", "name": annotation.key, "waveform": waveform,
                 "samplerate": self.features.audio_sample_rate,
-                "known_durations": torch.tensor([annotation.duration] if syllables is None else
-                                                [s.duration for s in syllables], dtype=torch.float32),
+                "known_durations": torch.tensor(durations, dtype=torch.float32),
                 "language": self.language}
 
     @staticmethod
@@ -74,11 +71,11 @@ class GameAdapter:
             raise ValueError(f"Unsupported GAME language: {options.language}")
         self.language = languages[options.language] if options.language and languages else 0
         self.info.update(sample_rate=self.model.inference_config.features.audio_sample_rate,
-                         time_resolution_seconds=self.model.timestep, language_id=self.language)
+                         hop_size=self.model.inference_config.features.hop_size, language_id=self.language)
         config = ValidationConfig(
             d3pm_sample_t0=options.t0, d3pm_sample_steps=options.steps, d3pm_sample_ts=options.timesteps,
             boundary_decoding_threshold=options.boundary_threshold,
-            boundary_decoding_radius=round(options.boundary_radius_seconds / self.model.timestep),
+            boundary_decoding_radius=round(options.boundary_radius_ms / (1000 * self.model.timestep)),
             note_presence_threshold=options.presence_threshold,
         )
         self.module = SafeInferenceModule(model=self.model, config=config)
@@ -136,10 +133,9 @@ class GameAdapter:
                 notes.append(Interval(cursor * timestep, (cursor + count) * timestep, label))
                 cursor += count
             annotation.tiers["notes"] = notes
-            issues = []
+            issues = list(records[key]["issues"])
             if annotation.provenance.get("syllable_input", {}).get("method") == "unconstrained":
                 annotation.duration = cursor * timestep
-                annotation.provenance["time_resolution_seconds"] = timestep
                 issues.append(Issue("unconstrained_notes", "No syllable boundaries were supplied; phoneme alignment is not guaranteed.",
                                     "game", "warning"))
             annotation.provenance["game"] = self.info
@@ -147,6 +143,15 @@ class GameAdapter:
             annotation.provenance["raw_notes"] = {"durations": durations, "midi": scores,
                                                   "presence": presence, "frames": frames,
                                                   "time_basis": "model_frames"}
+            if annotation.provenance["syllable_input"]["method"] != "unconstrained":
+                syllables = [Syllable(**row) for row in annotation.provenance["syllable_input"]["syllables"]]
+                try:
+                    annotation = align_tiers(annotation, syllables, timestep=timestep,
+                                             end_frame=round(annotation.duration / timestep))
+                except ValueError as exc:
+                    results.append(Outcome(annotation.sample, "failed", annotation,
+                                           [*issues, Issue("note_alignment", str(exc), "game")]))
+                    continue
             annotation.provenance.setdefault("layer_origins", {})["notes"] = "game"
             annotation.stale = [name for name in annotation.stale if name not in {"notes", "export"}]
             annotation.edited_layers = [name for name in annotation.edited_layers if name != "notes"]

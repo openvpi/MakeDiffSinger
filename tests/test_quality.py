@@ -152,7 +152,10 @@ def test_report_preserves_negative_scores_and_never_copies_samples(tmp_path, ann
     assert report["assets"]["source_seconds"] == 1
     assert report["assets"]["clip_seconds"] == 4
     assert report_main([str(assets), "--output", str(output)]) == 0
-    assert not (output / "diagnosis.json").exists()
+    diagnoses = json.loads((output / "diagnosis.json").read_text())
+    assert len(diagnoses) == 3 and "confidence" not in diagnoses[-1]
+    assert (output / "confidence_histogram.jpg").exists()
+    assert not (output / "confidence_scatter.jpg").exists()
 
 
 def test_review_pack_requires_and_exports_an_explicit_selection(tmp_path, annotation, capsys):

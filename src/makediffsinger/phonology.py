@@ -6,7 +6,8 @@ from pathlib import Path
 
 import yaml
 
-from .annotations import TIME_EPS, tier_signatures
+from .annotations import tier_signatures
+from .timing import match_boundaries, tier_edges, tolerance
 from .types import Annotation, Syllable
 
 
@@ -153,16 +154,28 @@ def syllables_from_counts(annotation: Annotation, counts: list[int]) -> list[Syl
     return result
 
 
+def current_phone_counts(annotation):
+    counts = annotation.provenance.get("imported_ph_num")
+    if counts is None:
+        return None
+    phones = annotation.tiers.get("phones", [])
+    labels = annotation.provenance.get("imported_phone_labels")
+    if labels is not None:
+        return counts if labels == [p.label for p in phones] else None
+    if tier_signatures({"phones": phones})["phones"] == annotation.provenance.get("imported_phones_signature"):
+        return counts
+    return None
+
+
 def derive_syllables(annotation: Annotation, profiles: PhoneProfiles | None = None) -> list[Syllable]:
     phones = annotation.tiers.get("phones", [])
     if not phones:
         raise ValueError("A nonempty phones layer is required.")
-    imported = annotation.provenance.get("imported_ph_num")
+    imported = current_phone_counts(annotation)
     if imported is not None:
-        signature = tier_signatures({"phones": phones})["phones"]
-        if annotation.provenance.get("imported_phones_signature") != signature:
-            raise ValueError("Imported ph_num is stale after phone edits.")
         return syllables_from_counts(annotation, imported)
+    if "imported_ph_num" in annotation.provenance and not (profiles and annotation.provenance.get("groups_verified")):
+        raise ValueError("Imported ph_num is stale after phone edits.")
     if profiles is None:
         raise ValueError("Phone profiles are required to derive syllables from FA groups.")
     if annotation.provenance.get("groups_verified") is False:
@@ -170,21 +183,12 @@ def derive_syllables(annotation: Annotation, profiles: PhoneProfiles | None = No
     groups = annotation.tiers.get("words")
     if not groups:
         raise ValueError("Pronunciation groups are missing; provide verified groups or source ph_num.")
-    onsets, cursor = [], 0
-    for group in groups:
-        start = cursor
-        while cursor < len(phones) and phones[cursor].start < group.end - TIME_EPS:
-            if phones[cursor].start < group.start - TIME_EPS or phones[cursor].end > group.end + TIME_EPS:
-                raise ValueError("A pronunciation group boundary crosses a phone.")
-            cursor += 1
-        if cursor == start:
-            raise ValueError("A pronunciation group contains no phones.")
-        if abs(phones[start].start - group.start) > TIME_EPS or abs(phones[cursor - 1].end - group.end) > TIME_EPS:
-            raise ValueError("Pronunciation groups must align with phone boundaries.")
+    ms = tolerance(annotation)
+    indices = match_boundaries(tier_edges(groups, annotation.duration, ms), tier_edges(phones, annotation.duration, ms), ms)
+    onsets = []
+    for start, cursor in zip(indices, indices[1:]):
         kinds = [profiles.kind(p.label, annotation.sample.language) for p in phones[start:cursor]]
         onsets.extend(start + i for i in group_onsets(kinds))
-    if cursor != len(phones):
-        raise ValueError("Pronunciation groups do not cover all phones.")
     prefix = onsets[0] != 0
     if prefix:
         onsets.insert(0, 0)

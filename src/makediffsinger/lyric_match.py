@@ -14,7 +14,6 @@ _CREDIT = re.compile(
     r"lyrics by|written by|music by|arranged by|artist|composer|producer|"
     r"vocals?|arrangement)\s*[:：-]\s*", re.IGNORECASE,
 )
-_TAG = re.compile(r"^\s*[\[【（(][^\n]*?[\]】）)]\s*$")
 _LRC = re.compile(r"^\s*(?:\[\d{1,3}:\d{2}(?:[.:]\d+)?\]\s*)+")
 _STAGE = re.compile(
     r"[\[【（(]\s*(?:前奏|间奏|間奏|尾奏|副歌|重复副歌|重複副歌|"
@@ -35,7 +34,7 @@ def _parse_reference(text, exclude_lines, keep_lines):
         lyric = _LRC.sub(lambda match: " " * len(match[0]), raw)
         if line in exclude_lines:
             reason = "explicit"
-        elif line not in keep_lines and (_CREDIT.match(lyric) or _TAG.match(lyric)):
+        elif line not in keep_lines and (_CREDIT.match(lyric) or _STAGE.fullmatch(lyric.strip())):
             reason = "credit_or_standalone_annotation"
         else:
             if line not in keep_lines:
@@ -47,8 +46,6 @@ def _parse_reference(text, exclude_lines, keep_lines):
                 clean[line] = lyric
             continue
         reported.append({"line": line, "text": raw, "reason": reason})
-    if not clean:
-        raise ValueError("No sung lyric text remains after source preparation.")
     return clean, reported
 
 
@@ -214,8 +211,8 @@ def match_lyrics(samples, reference, hypotheses, *, pipeline, languages=None, ve
     min_score and top_k limit the independent source shortlists. min_similarity
     and min_margin add diagnostics to the result.
     """
-    if candidate_count < 2 or chunk_size < 1:
-        raise ValueError("Need at least two candidates and a positive chunk size.")
+    if candidate_count < 1 or chunk_size < 1:
+        raise ValueError("Candidate count and chunk size must be positive.")
     if not math.isfinite(min_score) or type(top_k) is not int or top_k < 1:
         raise ValueError("Minimum source score must be finite and top_k must be a positive integer.")
     if min_similarity is not None and not 0 <= min_similarity <= 1:

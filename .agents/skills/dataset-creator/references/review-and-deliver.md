@@ -12,7 +12,7 @@ For a full run, compare the input clip IDs with the maintained annotations and t
 
 For a run that includes forced alignment, deliver the aligner's native statistics in `04-quality/`. The full pipeline writes them there. If using TIFA directly, enable `--stat` and copy the contents of that run's `statistics/` directory. For a custom adapter, use the [statistics writer](../../../../docs/workflow.md#quality-overview) with the current run's measurements.
 
-At handoff, check the sample IDs in `diagnosis.json` against the clips with complete, current measurements. Check for `scores.json` and both the histogram and frame-count scatter plot for agreement, confidence, determinacy and monotonicity. Report any gaps. A notes-only run or an import can have no alignment measurements.
+At handoff, check the IDs in `diagnosis.json` against clips with current measurements. Deliver the available pronunciation scores and native plots. Each measured metric supports a histogram. A scatter plot also needs paired frame counts. Report missing measurements or a statistics writer failure separately from annotation failures. A notes-only run or an import can have no alignment measurements.
 
 ## Quality tail filtering
 

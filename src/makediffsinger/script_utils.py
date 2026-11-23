@@ -44,7 +44,7 @@ def add_runtime(parser, *, alignment=False, notes=False):
     if notes:
         parser.add_argument("--game-language", help="Advanced GAME language conditioning. Omit for standard note extraction.")
         parser.add_argument("--seg-threshold", type=float, default=0.2)
-        parser.add_argument("--seg-radius", type=float, default=0.02)
+        parser.add_argument("--seg-radius-ms", type=int, default=20)
         parser.add_argument("--est-threshold", type=float, default=0.2)
         parser.add_argument("--steps", type=int, default=8)
         parser.add_argument("--t0", type=float, default=0.0)
@@ -115,7 +115,7 @@ def pipeline(args):
                                      args.oov_handling, args.score_unit, args.skip_penalty)
     notes = NoteOptions()
     if hasattr(args, "game_language"):
-        notes = NoteOptions(args.game_language, args.seg_threshold, args.seg_radius, args.est_threshold,
+        notes = NoteOptions(args.game_language, args.seg_threshold, args.seg_radius_ms, args.est_threshold,
                             args.t0, args.steps, args.timesteps)
     return Pipeline(get_resources(args), runtime, alignment, notes)
 

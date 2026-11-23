@@ -4,7 +4,7 @@ Conversion does not require a model session. Verify the [source fields](source-f
 
 The built-in importer accepts canonical TextGrid and DiffSinger CSV. Source tier mappings rename fields but do not establish their meaning. Mark pronunciation groups verified only when the source supports that interpretation.
 
-Use `import_annotations.py --audio-root` when the audio is in a separate tree, and repeat `--tier-map SOURCE=TARGET` for verified names. Use `--groups pronunciation` only for verified pronunciation groups. Set `--time-resolution` to the source time precision in seconds when known. It informs timing checks and preserves the original coordinates.
+Use `import_annotations.py --audio-root` when the audio is in a separate tree, and repeat `--tier-map SOURCE=TARGET` for verified names. Use `--groups pronunciation` only for verified pronunciation groups. Supply hand-edited TextGrids directly. For unusual source timing conventions, the importer accepts `--boundary-tolerance-ms` and `--audio-warning-ms` as integer milliseconds. Both default to 10. See the [timing contract](../../../../docs/annotations.md#time).
 
 A name mapping cannot distinguish repeated or unnamed TextGrid tiers. Use an available TextGrid reader in the source adapter, identify each tier by its position and verified contents, and pass explicitly named interval lists to import_intervals. Position alone does not establish semantics, and the original TextGrid need not be rewritten.
 
@@ -13,7 +13,7 @@ For other inputs, write a small task-local adapter. The [adapter example](../ass
 Check:
 
 - Sample identity and audio correspondence.
-- Time unit, time origin, source precision, and endpoint coverage.
+- Time unit, time origin, and endpoint coverage.
 - Label semantics and missing layers.
 - Which source fields can be represented, which remain available only in the source, and whether the requested conversion loses information.
 

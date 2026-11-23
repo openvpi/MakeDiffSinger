@@ -152,7 +152,7 @@ class TifaAdapter:
                 if event not in self.events or token is None or token < NUM_RESERVED_TOKENS:
                     raise ValueError(f"Event {event!r} is not supported by both the FA and VED vocabularies.")
                 self.event_tokens[event] = token
-        self.info.update(time_resolution_seconds=config.features.timestep,
+        self.info.update(hop_size=config.features.hop_size,
                          sample_rate=config.features.audio_sample_rate,
                          ved_checkpoint=resources.ved_model, g2p_root=str(self.g2p_root),
                          g2p_config=self.g2p_config.model_dump())
@@ -321,7 +321,7 @@ class TifaAdapter:
             if result["scores"] is not None:
                 scores = [[v if math.isfinite(v) else str(v) for v in row[:len(candidates)]]
                           for row, candidates in zip(result["scores"].detach().cpu().tolist(), result["lexicon"])]
-            provenance = {"tifa": self.info, "time_resolution_seconds": timestep, "groups_verified": True,
+            provenance = {"tifa": self.info, "groups_verified": True,
                           "_aligned_pfml": _alignment_pfml(result["texts"], result["group_scripts"],
                                                            word_ids, group_ids, labels, keep),
                           "raw_phone_spans_frames": raw_spans,

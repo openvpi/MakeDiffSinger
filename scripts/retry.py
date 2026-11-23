@@ -5,8 +5,10 @@ from fnmatch import fnmatchcase
 from pathlib import Path
 
 from makediffsinger.lyric_handoff import alignment_inputs
+from makediffsinger.catalog import collection_root
 from makediffsinger.script_utils import add_output, add_runtime, add_selection, matches_sample, pipeline, run, save
-from makediffsinger.storage import load_annotations, load_problems
+from makediffsinger.storage import load_annotations, load_problems, read_annotations
+from makediffsinger.types import Outcome, Issue
 
 
 def build_parser():
@@ -32,13 +34,26 @@ def execute(args):
     with pipeline(args) as session:
         if args.stage == "notes":
             wanted = {o.sample.key for o in selected}
-            existing = {a.key: a for a in load_annotations(args.input) if a.key in wanted}
+            unreadable = []
+            existing = {a.key: a for a in load_annotations(args.input, failures=unreadable) if a.key in wanted}
+            damaged = {r["key"]: r["reason"] for r in unreadable}
+            fa_root = collection_root(args.input) / ".work/fa"
             for outcome in selected:
-                if outcome.sample.key not in existing and outcome.annotation is not None:
-                    existing[outcome.sample.key] = outcome.annotation
-            if set(existing) != wanted:
-                raise ValueError("Notes retry needs prior FA assets or saved FA candidates.")
+                key = outcome.sample.key
+                if key in existing or key in damaged:
+                    continue
+                if outcome.annotation is not None:
+                    existing[key] = outcome.annotation
+                elif (archive := fa_root / (key + ".TextGrid")).is_file():
+                    try:
+                        existing[key] = read_annotations(archive)
+                    except (ValueError, OSError) as exc:
+                        damaged[key] = str(exc)
             result = session.reannotate(list(existing.values()), layers=("notes",), replace_edited=args.replace_edited)
+            for outcome in selected:
+                if outcome.sample.key not in existing:
+                    reason = damaged.get(outcome.sample.key, "Notes retry needs a prior FA asset or saved FA candidate.")
+                    result.outcomes.append(Outcome(outcome.sample, "pending", issues=[Issue("missing_fa", reason, "game")]))
         else:
             function = session.align if args.stage == "fa" else session.run
             result = function(alignment_inputs([o.sample for o in selected], args.input))

@@ -11,7 +11,7 @@ from pathlib import Path
 from makediffsinger.api import import_intervals, save_result
 from makediffsinger.storage import write_json
 from makediffsinger.types import AudioSource, BatchResult, Interval, Outcome, Sample
-from makediffsinger.validation import require_valid
+from makediffsinger.validation import validate
 
 
 def map_record(record, source_root, origin, groups_verified):
@@ -23,8 +23,7 @@ def map_record(record, source_root, origin, groups_verified):
     tiers = {name: [Interval(float(i["start"]), float(i["end"]), i["label"]) for i in intervals]
              for name, intervals in record["tiers"].items()}
     return import_intervals(sample, float(record["duration"]), tiers, origin=origin,
-                            groups_verified=groups_verified,
-                            time_resolution=float(record.get("time_resolution", 0.0)))
+                            groups_verified=groups_verified)
 
 
 def main():
@@ -34,18 +33,22 @@ def main():
     parser.add_argument("--groups-verified", action="store_true")
     args = parser.parse_args()
     records = json.loads(args.source.read_text(encoding="utf-8"))
-    outcomes, failures = [], []
+    outcomes, failures, warnings = [], [], []
     for index, record in enumerate(records):
         try:
             annotation = map_record(record, args.source.resolve().parent,
                                     f"{args.source.resolve()}#{index}", args.groups_verified)
-            require_valid(annotation, check_audio=True)
+            issues = validate(annotation, check_audio=True)
+            warnings.extend({"key": annotation.key, "message": i.message} for i in issues if i.severity == "warning")
+            errors = [i.message for i in issues if i.severity == "error"]
+            if errors:
+                raise ValueError("; ".join(errors))
         except (KeyError, ValueError, OSError, TypeError) as exc:
             failures.append({"record_index": index, "source": str(args.source.resolve()),
                              "reason": str(exc)})
             continue
         outcomes.append(Outcome(annotation.sample, "imported", annotation))
-    report = {"storage": save_result(BatchResult(outcomes), args.output), "mapping_failures": failures}
+    report = {"storage": save_result(BatchResult(outcomes), args.output), "mapping_failures": failures, "warnings": warnings}
     write_json(args.output / "adapter-report.json", report)
     print(json.dumps(report, indent=2))
     return 2 if failures else 0

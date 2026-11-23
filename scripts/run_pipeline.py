@@ -55,6 +55,10 @@ def _run_dataset(args, session):
                 if any(i.severity == "error" for i in issues):
                     outcome.status = "failed"
         result = BatchResult(checked.problems + aligned.problems + noted.outcomes)
+        for outcome in noted.outcomes:
+            for issue in outcome.issues:
+                if issue.severity == "warning":
+                    summary.setdefault("warnings", []).append({"key": outcome.sample.key, "message": issue.message})
         counts.update(save_result(result, annotation_root, archive_fa=args.pfml, **storage_options))
         problems.update(problem_counts(result.problems))
         summary.update(processed=offset + len(chunk), counts=dict(counts), fa_counts=dict(fa_counts))
@@ -66,12 +70,16 @@ def _run_dataset(args, session):
         summary["return_to_alignment"] = [row["key"] for row in current_review["return_to_alignment"]]
     report_output = args.report_output or args.output / "04-quality"
     report = annotation_report(select(load_annotations(annotation_root), Selection()), annotation_root, keep_input_order=True)
-    measured = write_overview(report, report_output, tifa_repo=get_resources(args).repo("tifa"))
+    try:
+        measured = write_overview(report, report_output, tifa_repo=get_resources(args).repo("tifa"))
+    except (OSError, RuntimeError) as exc:
+        summary["statistics_error"] = str(exc)
+        measured = 0
     summary.update(quality_output=str(report_output), diagnosed=measured)
     if args.processing_notes:
         append_processing_notes(args.processing_notes, "Annotation pipeline", problem_messages(problems))
     incomplete = any(counts[name] for name in ("pending", "failed", "conflict")) or summary.get("return_to_alignment")
-    return summary, 2 if incomplete else 0
+    return summary, 2 if incomplete or "statistics_error" in summary else 0
 
 
 def _destination(parent, name, source, reserved):

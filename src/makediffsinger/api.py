@@ -7,7 +7,7 @@ from .audio import audio_info
 from .config import AlignmentOptions, NoteOptions, Resources, Runtime
 from .importers import import_annotations, import_intervals, import_transcriptions
 from .inputs import discover_pairs, inspect_dataset
-from .phonology import PhoneProfiles, derive_syllables
+from .phonology import PhoneProfiles, current_phone_counts, derive_syllables
 from .reannotation import apply_annotation_updates, plan_reannotation
 from .selection import QualityRule, Selection, select, select_quality, summarize
 from .storage import load_annotations, read_annotations, save_result, write_annotations
@@ -64,11 +64,19 @@ class Pipeline:
         annotations = list(annotations)
         _unique([a.sample for a in annotations])
         requests, problems = [], {}
-        profiles = self.profiles if any("imported_ph_num" not in a.provenance for a in annotations) else PhoneProfiles()
         for annotation in annotations:
             try:
+                counts = current_phone_counts(annotation)
+                profiles = self.profiles if counts is None else None
+                if ("imported_ph_num" in annotation.provenance and counts is None
+                        and annotation.provenance.get("groups_verified")):
+                    provenance = dict(annotation.provenance)
+                    for key in ("imported_ph_num", "imported_phone_labels", "imported_phones_signature"):
+                        provenance.pop(key, None)
+                    annotation = replace(annotation, provenance=provenance)
                 syllables = derive_syllables(annotation, profiles)
-                inputs = replace(annotation, tiers={k: v for k, v in annotation.tiers.items() if k != "notes"},
+                used = {"phones"} if "imported_ph_num" in annotation.provenance else {"phones", "words"}
+                inputs = replace(annotation, tiers={k: v for k, v in annotation.tiers.items() if k in used},
                                  stale=[name for name in annotation.stale if name != "notes"])
                 issues = validate(inputs, required=("phones",), ignore_stale=True)
                 if any(i.severity == "error" for i in issues):
@@ -77,21 +85,22 @@ class Pipeline:
                 provenance["syllable_input"] = {
                     "method": "imported_ph_num" if "imported_ph_num" in annotation.provenance else "beat_phone",
                     "syllables": [asdict(syllable) for syllable in syllables],
-                    "profile_sources": dict(profiles.sources),
-                    "dictionary_sources": dict(profiles.dictionaries),
-                    "global_phone_classes": dict(profiles.global_classes),
-                    "inline_phone_classes": {lang: profiles.languages[lang] for lang, origin in profiles.sources.items()
-                                             if origin == "explicit mapping"},
                 }
+                if profiles:
+                    provenance["syllable_input"].update(
+                        profile_sources=dict(profiles.sources), dictionary_sources=dict(profiles.dictionaries),
+                        global_phone_classes=dict(profiles.global_classes),
+                        inline_phone_classes={lang: profiles.languages[lang] for lang, origin in profiles.sources.items()
+                                              if origin == "explicit mapping"})
                 requests.append((replace(annotation, provenance=provenance), syllables))
-            except ValueError as exc:
+            except (ValueError, OSError) as exc:
                 problems[annotation.key] = Outcome(annotation.sample, "failed", annotation,
                                                    issues=[Issue("syllable_input", str(exc), "game")])
         if requests:
             originals = {a.key: a for a in annotations}
             for outcome in self.game.annotate(requests).outcomes:
                 if outcome.annotation is not None:
-                    issues = validate(outcome.annotation, required=("phones", "notes"), profiles=profiles)
+                    issues = validate(outcome.annotation, required=("phones", "notes"), profiles=self._profiles)
                     outcome.issues.extend(issues)
                     if any(i.severity == "error" for i in issues):
                         outcome.status = "failed"
@@ -142,11 +151,16 @@ class Pipeline:
             problems.update((o.sample.key, o) for o in result.problems)
         if "game" in plan.stages:
             result = self.annotate_notes(candidates)
+            game_issues = {o.sample.key: o.issues for o in result.outcomes if o.ok}
             candidates = result.annotations
             problems.update((o.sample.key, o) for o in result.problems)
         for candidate in candidates:
-            problems[candidate.key] = apply_annotation_updates(
-                originals[candidate.key], candidate, plan, profiles=self.profiles)
+            outcome = apply_annotation_updates(
+                originals[candidate.key], candidate, plan,
+                profiles=self.profiles if current_phone_counts(candidate) is None else None)
+            if "game" in plan.stages:
+                outcome.issues.extend(game_issues.get(candidate.key, ()))
+            problems[candidate.key] = outcome
         return BatchResult([problems[key] for key in originals])
 
     def close(self):

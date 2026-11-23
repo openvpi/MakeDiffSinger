@@ -190,7 +190,9 @@ def summarize(items) -> dict:
         except (OSError, ValueError, RuntimeError, ImportError):
             unavailable.append(sample.key)
     confidence = sorted(value for a in annotations if (value := current_score(a, "confidence")[0]) is not None)
-    return {"sample_count": len(samples), "source_recordings": len(sources),
+    warnings = [{"key": o.sample.key, "code": i.code, "message": i.message}
+                for o in outcomes or () for i in o.issues if i.severity == "warning"]
+    return {"sample_count": len(samples), "warnings": warnings, "source_recordings": len(sources),
             "source_seconds": sum(sources.values()), "clip_seconds": clip_seconds,
             "annotation_seconds": sum(a.duration for a in annotations),
             "statuses": dict(Counter(o.status for o in outcomes)) if outcomes is not None

@@ -1,5 +1,6 @@
 import csv
 from copy import deepcopy
+from dataclasses import replace
 import json
 from pathlib import Path
 import sys
@@ -22,6 +23,7 @@ from makediffsinger.validation import validate
 from scripts.extract_notes import build_parser
 from scripts import export_diffsinger as export_script
 from scripts import run_pipeline
+from scripts import retry as retry_script
 from makediffsinger.selection import Selection, select
 from scripts.prepare import debug_g2p
 
@@ -137,6 +139,11 @@ def test_csv_roundtrip_preserves_fields_without_inventing_fa_layers(tmp_path, an
     assert len(manifest["selected"]) == 1
     assert (tmp_path / "export/und/transcriptions.csv").exists()
     assert not list((tmp_path / "export").rglob("*.yaml"))
+    first, second, *others = converted.tiers["phones"]
+    converted.tiers["phones"] = [replace(first, end=.103), replace(second, start=.103), *others]
+    converted.tiers["words"] = [Interval(0., .3, "unused")]
+    edited = transcription(converted)
+    assert edited["ph_num"] == row["ph_num"] and edited["note_slur"] == row["note_slur"]
 
 
 def test_all_rest_asset_remains_editable_and_cannot_be_compiled(annotation, profiles):
@@ -144,6 +151,33 @@ def test_all_rest_asset_remains_editable_and_cannot_be_compiled(annotation, prof
     assert not validate(annotation, profiles=profiles)
     with pytest.raises(ValueError, match="at least one pitched"):
         transcription(annotation, profiles)
+
+
+def test_export_keeps_valid_rows_beside_an_uncompilable_item(annotation, profiles, tmp_path):
+    invalid = deepcopy(annotation)
+    invalid.sample.id = "all-rest"
+    invalid.tiers["notes"] = [replace(n, label="rest") for n in invalid.tiers["notes"]]
+    manifest = export_diffsinger([invalid, annotation], tmp_path / "export", profiles=profiles)
+    assert [row["key"] for row in manifest["selected"]] == [annotation.key]
+    assert [row["key"] for row in manifest["failed"]] == [invalid.key]
+
+
+def test_notes_retry_uses_fa_archive_and_reports_only_missing_items(tmp_path, annotation, monkeypatch):
+    from contextlib import nullcontext
+    from makediffsinger.storage import save_result
+    root = tmp_path / "delivery"
+    final = root / "03-annotations"
+    missing = replace(annotation.sample, id="missing")
+    write_annotations(annotation, root / ".work/fa")
+    save_result(BatchResult([Outcome(s, "pending", issues=[Issue("retry", "needs notes")])
+                             for s in (annotation.sample, missing)]), final)
+    def reannotate(items, **kwargs):
+        assert [a.key for a in items] == [annotation.key]
+        return BatchResult([Outcome(a.sample, "annotated", a) for a in items])
+    monkeypatch.setattr(retry_script, "pipeline", lambda args: nullcontext(SimpleNamespace(reannotate=reannotate)))
+    args = retry_script.build_parser().parse_args([str(final), "--stage", "notes", "--output", str(tmp_path / "result")])
+    report, code = retry_script.execute(args)
+    assert code == 2 and report["storage"]["saved"] == report["storage"]["pending"] == 1
 
 
 def test_diffsinger_groups_by_language_and_user_speaker_map(tmp_path, annotation, profiles):

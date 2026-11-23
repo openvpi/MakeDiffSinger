@@ -20,7 +20,7 @@ def pronunciation_records(words):
 
 if __name__ == "__main__":
     sys.path.insert(0, str(Path.cwd()))
-    from inference.callbacks import StatisticsCallback, _CompactDict
+    from inference.callbacks import StatisticsCallback, _CompactDict, _CompactEncoder
 
     metrics, scores = json.load(sys.stdin.buffer)
     for record in scores:
@@ -29,4 +29,17 @@ if __name__ == "__main__":
     callback = StatisticsCallback(save_dir=Path(sys.argv[1]))
     callback._metric_records = metrics
     callback._score_records = scores
-    callback.on_predict_end(None, None)
+    if all(row.keys() == metrics[0].keys() and "num_skipped_tokens" in row for row in metrics):
+        callback.on_predict_end(None, None)
+    else:
+        # The native sorter assumes uniform keys. Preserve sparse measurements and
+        # supply its plotting method only the observations available for each plot.
+        directory = Path(sys.argv[1])
+        (directory / "diagnosis.json").write_text(json.dumps(metrics, ensure_ascii=False, indent=2), encoding="utf-8")
+        (directory / "scores.json").write_text(_CompactEncoder(indent=2, ensure_ascii=False).encode(scores), encoding="utf-8")
+        for field in ("agreement", "confidence", "determinacy", "monotonicity"):
+            measured = [row for row in metrics if field in row]
+            paired = [{field: row[field], "num_frames": row["num_frames"]} for row in measured if "num_frames" in row]
+            callback._save_stat_plots(paired)
+            if len(paired) != len(measured):
+                callback._save_stat_plots([{field: row[field]} for row in measured])

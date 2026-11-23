@@ -7,22 +7,31 @@ from pathlib import Path
 
 from ..audio import audio_info, replay_audio
 from ..catalog import sample_dataset
-from ..phonology import derive_syllables
+from ..phonology import current_phone_counts, derive_syllables
 from ..review import quality_review_directory, sync_quality_review
 from ..selection import Selected, select
 from ..types import check_identity
 from ..validation import note_slurs, require_valid
+from ..timing import DEFAULT_GAME_GRID, align_tiers, audio_warning, covered_frames
 
 
-def transcription(annotation, profiles=None):
-    used = {"phones", "words", "notes"}
+def transcription(annotation, profiles=None, *, game_grid=None, audio_seconds=None):
+    used = {"phones", "notes"}
+    if current_phone_counts(annotation) is None:
+        used.add("words")
     view = replace(annotation, tiers={k: v for k, v in annotation.tiers.items() if k in used},
                    stale=[name for name in annotation.stale if name in used])
     require_valid(view, required=("phones", "notes"), profiles=profiles)
+    syllables = derive_syllables(view, profiles)
+    grid = game_grid or annotation.provenance.get("game_grid") or DEFAULT_GAME_GRID
+    step = grid["hop_size"] / grid["sample_rate"]
+    annotation = align_tiers(view, syllables, timestep=step,
+                             end_frame=covered_frames(view.duration, step, audio_seconds))
     phones = annotation.tiers["phones"]
     if "#" in annotation.sample.id or ":" in annotation.sample.id:
         raise ValueError("DiffSinger reserves '#' and ':' in names; supply an explicit output ID mapping.")
-    syllables = derive_syllables(annotation, profiles)
+    syllables = [replace(s, start=phones[s.first_phone].start,
+                         end=phones[s.first_phone + s.phone_count - 1].end) for s in syllables]
     notes = annotation.tiers["notes"]
     if all(note.label == "rest" for note in notes):
         raise ValueError(f"DiffSinger pitch data needs at least one pitched note: {annotation.key}. "
@@ -64,7 +73,8 @@ def _unique_row_names(items):
         used.add(name.casefold())
 
 
-def export_diffsinger(annotations, output, *, profiles=None, copy_audio=True, criteria=None, review_output=None):
+def export_diffsinger(annotations, output, *, profiles=None, copy_audio=True, criteria=None, review_output=None,
+                      game_grid=None):
     if isinstance(annotations, Selected):
         if criteria is not None:
             raise ValueError("Pass selection criteria with the source annotations, or pass a Selected result.")
@@ -84,15 +94,30 @@ def export_diffsinger(annotations, output, *, profiles=None, copy_audio=True, cr
     if output.exists() and any(output.iterdir()):
         raise FileExistsError(f"Use an empty export directory: {output}")
     rows = defaultdict(list)
+    failed = []
+    warnings = []
     seen = set()
     for annotation in selected.annotations:
         if annotation.key in seen:
             raise ValueError(f"Duplicate output identity: {annotation.key}")
         seen.add(annotation.key)
-        row = transcription(annotation, profiles)
-        if copy_audio:
-            audio_info(annotation.sample.audio, require_mono=True)
-        rows[_subset_path(annotation.sample, speakers)].append((annotation, row))
+        try:
+            seconds = None
+            audio = annotation.sample.audio
+            if copy_audio or audio.waveform is not None or (audio.path and Path(audio.path).is_file()):
+                # CSV-only conversion can still use the source duration when it is readable.
+                try:
+                    seconds = audio_info(audio, require_mono=copy_audio)["clip_seconds"]
+                except (ValueError, OSError, RuntimeError):
+                    if copy_audio:
+                        raise
+            if seconds is not None:
+                if issue := audio_warning(annotation, seconds):
+                    warnings.append({"key": annotation.key, "message": issue.message})
+            row = transcription(annotation, profiles, game_grid=game_grid, audio_seconds=seconds)
+            rows[_subset_path(annotation.sample, speakers)].append((annotation, row))
+        except (ValueError, OSError, RuntimeError) as exc:
+            failed.append({"key": annotation.key, "reason": str(exc)})
     if selected.quality_filter_applied:
         review = Path(review_output).resolve() if review_output else quality_review_directory(output)
         if review.is_relative_to(output):
@@ -106,9 +131,17 @@ def export_diffsinger(annotations, output, *, profiles=None, copy_audio=True, cr
         leaf.mkdir(parents=True, exist_ok=True)
         if copy_audio:
             (leaf / "wavs").mkdir(exist_ok=True)
+        written_rows = []
         for annotation, row in items:
             if copy_audio:
-                replay_audio(annotation.sample.audio, leaf / "wavs" / (row["name"] + ".wav"))
+                destination = leaf / "wavs" / (row["name"] + ".wav")
+                try:
+                    replay_audio(annotation.sample.audio, destination)
+                except (ValueError, FileNotFoundError) as exc:
+                    destination.unlink(missing_ok=True)
+                    failed.append({"key": annotation.key, "reason": str(exc)})
+                    continue
+            written_rows.append(row)
             entries.append({"key": annotation.key, "name": row["name"],
                             "csv": (subset / "transcriptions.csv").as_posix(),
                             "audio": (subset / "wavs" / (row["name"] + ".wav")).as_posix() if copy_audio else None,
@@ -117,7 +150,7 @@ def export_diffsinger(annotations, output, *, profiles=None, copy_audio=True, cr
         with (leaf / "transcriptions.csv").open("w", encoding="utf-8", newline="") as stream:
             writer = csv.DictWriter(stream, fieldnames=list(items[0][1]))
             writer.writeheader()
-            writer.writerows(row for _, row in items)
-    manifest = {"selected": entries, "excluded": selected.excluded, "criteria": selected.criteria,
+            writer.writerows(written_rows)
+    manifest = {"selected": entries, "failed": failed, "warnings": warnings, "excluded": selected.excluded, "criteria": selected.criteria,
                 "selection_details": selected.details}
     return manifest

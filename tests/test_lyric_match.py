@@ -29,6 +29,16 @@ def _pipeline(pronunciations=_g2p, **methods):
     return SimpleNamespace(tifa=SimpleNamespace(pronunciations=pronunciations, info={}, **methods))
 
 
+def test_parenthesized_vocals_and_empty_song_reference_preserve_clip_lyrics():
+    sample = Sample("clip", AudioSource())
+    asr = {"clips": {"clip": {"text": "echo"}}}
+    for reference, matched in (("(echo)", True), ("Composer: Example", False)):
+        report = match_lyrics([sample], reference, asr, pipeline=_pipeline(), verify=False, candidate_count=1)
+        record = report["clips"]["clip"]
+        assert bool(record["candidates"]) == matched
+        assert record["asr_text"] == "echo"
+
+
 def test_song_spans_allow_repeated_omitted_and_reordered_passages():
     reference = """Composer: Example
 [Intro]

@@ -171,7 +171,7 @@ python scripts/review_pending.py outputs/03-annotations --output outputs/05-revi
 
 ~~~bash
 python scripts/prepare/inspect_sources.py source_dataset --output work/inventory.json
-python scripts/import_annotations.py source_labels --audio-root source_audio --language zh --groups pronunciation --time-resolution 0.01 --output work/imported
+python scripts/import_annotations.py source_labels --audio-root source_audio --language zh --groups pronunciation --output work/imported
 python scripts/export_diffsinger.py work/imported --resources configs/resources.local.json --output outputs/06-diffsinger
 ~~~
 

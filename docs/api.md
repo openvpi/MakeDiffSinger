@@ -68,7 +68,7 @@ Keep custom source metadata as ordinary JSON data: string-keyed dictionaries, li
 
 `quality_summary(annotations)` aggregates current self-check metrics and orders per-sample records by the [quality ranking](workflow.md#quality-overview). Original score/frame-count pairs and finite negative values are preserved. Missing, invalid, and stale scores are omitted from those records and counted separately in the summary.
 
-`write_overview(report, output)` invokes the native statistics writer on current complete diagnoses and collected pronunciation scores. It returns the number of measured samples. Use an initialized TIFA checkout and the inference environment. Pass `tifa_repo` for a configured checkout.
+`write_overview(report, output)` publishes current measurements and collected pronunciation scores using the native statistics tools. Each histogram uses the available values for that metric. Scatter plots require paired frame counts. The function returns the number of measured samples. Use an initialized TIFA checkout and the inference environment. Pass `tifa_repo` for a configured checkout.
 
 ~~~python
 from makediffsinger.api import quality_summary, summarize, write_overview
