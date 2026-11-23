@@ -17,7 +17,7 @@ def build_parser():
     parser.add_argument("--audio-root", type=Path)
     parser.add_argument("--tier-map", action="append", default=[], metavar="SOURCE=TARGET")
     parser.add_argument("--groups", choices=("unknown", "pronunciation"), default="unknown")
-    parser.add_argument("--boundary-tolerance-ms", type=int, help="Cross-tier boundary matching tolerance (default: 10 ms).")
+    parser.add_argument("--boundary-tolerance-ms", type=int, help="Tolerance for tier endpoints, note alignment and frame collisions (default: 10 ms).")
     parser.add_argument("--audio-warning-ms", type=int, help="Warn above this audio/annotation duration difference (default: 10 ms).")
     return parser
 

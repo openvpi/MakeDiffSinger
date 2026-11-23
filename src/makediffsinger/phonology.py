@@ -7,7 +7,7 @@ from pathlib import Path
 import yaml
 
 from .annotations import tier_signatures
-from .timing import match_boundaries, tier_edges, tolerance
+from .timing import phone_ownership, tier_edges, tolerance
 from .types import Annotation, Syllable
 
 
@@ -184,7 +184,7 @@ def derive_syllables(annotation: Annotation, profiles: PhoneProfiles | None = No
     if not groups:
         raise ValueError("Pronunciation groups are missing; provide verified groups or source ph_num.")
     ms = tolerance(annotation)
-    indices = match_boundaries(tier_edges(groups, annotation.duration, ms), tier_edges(phones, annotation.duration, ms), ms)
+    indices = phone_ownership(tier_edges(groups, annotation.duration, ms), tier_edges(phones, annotation.duration, ms))
     onsets = []
     for start, cursor in zip(indices, indices[1:]):
         kinds = [profiles.kind(p.label, annotation.sample.language) for p in phones[start:cursor]]

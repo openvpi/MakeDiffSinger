@@ -106,7 +106,7 @@ def test_fa_only_marks_preserved_notes_stale(annotation, profiles):
 
 def test_partial_update_rejects_incompatible_geometry(annotation, profiles):
     candidate = deepcopy(annotation)
-    candidate.tiers["words"] = [Interval(0, .3, "x"), Interval(.3, 1, "y")]
+    candidate.tiers["words"] = [Interval(0, .29, "x"), Interval(.29, .30, "y"), Interval(.30, 1, "z")]
     result = apply_annotation_updates(annotation, candidate,
                                       plan_reannotation([annotation], layers=("words",)), profiles=profiles)
     assert result.status == "conflict"

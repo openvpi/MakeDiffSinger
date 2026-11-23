@@ -70,6 +70,22 @@ def tier_edges(tier, duration, endpoint_ms=JOIN_TOLERANCE_MS):
     return edges
 
 
+def phone_ownership(group_edges, phone_edges):
+    """Locate each group edge on the phone timeline, with earlier edges winning ties."""
+    indices = [0]
+    for time in group_edges[1:-1]:
+        right = bisect_left(phone_edges, time)
+        left = right - 1
+        index = left if time - phone_edges[left] <= phone_edges[right] - time else right
+        indices.append(index)
+    indices.append(len(phone_edges) - 1)
+    for i, (start, end) in enumerate(zip(indices, indices[1:])):
+        if start == end:
+            raise ValueError(f"Group from {group_edges[i]:g} to {group_edges[i + 1]:g} s has no phones: "
+                             f"both edges select the phone boundary at {phone_edges[start]:g} s.")
+    return indices
+
+
 def match_boundaries(query, anchors, ms):
     """Minimum-total-distance ordered one-to-one match with fixed endpoints."""
     milliseconds(ms)
@@ -145,7 +161,7 @@ def align_tiers(annotation, syllables, *, timestep=None, end_frame=None):
         if name not in layers:
             continue
         try:
-            indices = match_boundaries(layers[name], phones, ms)
+            indices = phone_ownership(layers[name], phones)
         except ValueError:
             # Written text and imported auxiliary word tiers may have independent segmentation.
             if name == "words" and "imported_ph_num" not in annotation.provenance:

@@ -12,7 +12,7 @@ from makediffsinger.config import Resources
 from makediffsinger.phonology import PhoneProfiles, derive_syllables, group_onsets
 from makediffsinger.types import Interval
 from makediffsinger.validation import validate
-from makediffsinger.timing import covered_frames, frame_coordinates, match_boundaries
+from makediffsinger.timing import align_tiers, covered_frames, frame_coordinates, match_boundaries, phone_ownership
 
 
 @pytest.mark.parametrize("kinds,expected", [
@@ -165,6 +165,20 @@ def test_ordered_matching_chooses_closest_feasible_boundary_assignment():
     assert match_boundaries([0., .104, .4], anchors, 10) == [0, 3, 4]
     with pytest.raises(ValueError, match="within 1 ms"):
         match_boundaries([0., .1035, .107, .4], anchors, 1)
+
+
+def test_word_ownership_uses_nearest_phone_edge_regardless_of_distance(annotation, profiles):
+    annotation.provenance["boundary_tolerance_ms"] = 0
+    original = annotation.tiers["phones"].copy()
+    expected = derive_syllables(annotation, profiles)
+    for layer in ("words", "texts"):
+        annotation.tiers[layer] = [Interval(0, .62, "first"), Interval(.62, 1., "second")]
+    assert derive_syllables(annotation, profiles) == expected
+    assert not validate(annotation, profiles=profiles)
+    aligned = align_tiers(annotation, expected)
+    assert aligned.tiers["words"][0].end == aligned.tiers["texts"][0].end == .7
+    assert aligned.tiers["phones"] == original
+    assert phone_ownership([0., .375, 1.], [0., .25, .5, 1.]) == [0, 1, 3]
 
 
 def test_frame_collisions_respect_local_budget_and_are_idempotent():

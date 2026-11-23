@@ -3,7 +3,7 @@
 import math
 import re
 
-from .timing import JOIN_TOLERANCE_MS, audio_warning, near, match_boundaries, tier_edges, tolerance
+from .timing import JOIN_TOLERANCE_MS, audio_warning, near, match_boundaries, phone_ownership, tier_edges, tolerance
 from .audio import audio_info
 from .phonology import PhoneProfiles, derive_syllables
 from .types import Annotation, Issue
@@ -50,7 +50,7 @@ def validate(annotation: Annotation, *, required=(), profiles: PhoneProfiles | N
             and "imported_ph_num" not in annotation.provenance):
         try:
             ms = tolerance(annotation)
-            match_boundaries(tier_edges(words, annotation.duration, ms), tier_edges(phones, annotation.duration, ms), ms)
+            phone_ownership(tier_edges(words, annotation.duration, ms), tier_edges(phones, annotation.duration, ms))
         except ValueError as exc:
             issues.append(Issue("group_alignment", str(exc)))
     if annotation.tiers.get("notes") and not (ignore_stale and "notes" in annotation.stale):
